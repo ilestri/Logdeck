@@ -1,0 +1,17 @@
+* text=auto eol=lf
+
+*.swift text eol=lf diff=swift
+*.sh text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.plist text eol=lf
+*.logdeck text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.icns binary
+*.zip binary
