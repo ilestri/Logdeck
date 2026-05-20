@@ -289,6 +289,28 @@ final class LogParserTests: XCTestCase {
         XCTAssertNotNil(entry.timestamp)
     }
 
+    func testParsesJEUSBracketedTimestampPrefix() {
+        let entry = LogParser.parseLine(
+            "[2026.05.18 08:45:08:769][0] [aisb-1] [SERVER-0000] Version information - JEUS 8.5.",
+            lineNumber: 1,
+            sourceID: UUID()
+        )
+
+        XCTAssertEqual(entry.level, .info)
+        XCTAssertNotNil(entry.timestamp)
+    }
+
+    func testParsesLog4jTimestampAfterBracketedPrefix() {
+        let entry = LogParser.parseLine(
+            "[log4j]2026-05-18 09:54:57,671 DEBUG [mapper] <==      Total: 1",
+            lineNumber: 1,
+            sourceID: UUID()
+        )
+
+        XCTAssertEqual(entry.level, .debug)
+        XCTAssertNotNil(entry.timestamp)
+    }
+
     func testParsesParenthesizedISOTimestampPrefix() {
         let entry = LogParser.parseLine(
             "(2026-05-19T13:10:20Z) ERROR failed to open file",

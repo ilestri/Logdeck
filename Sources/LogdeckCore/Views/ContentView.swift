@@ -6,8 +6,19 @@ public struct ContentView: View {
     @StateObject private var viewModel = LogWorkspaceViewModel()
     @State private var isImporterPresented = false
     @State private var isDropTargeted = false
+    @State private var didOpenInitialFileURLs = false
+    @ObservedObject private var fileOpenCoordinator: LogFileOpenCoordinator
+    private let initialFileURLs: [URL]
 
-    public init() {}
+    @MainActor public init(initialFileURLs: [URL] = []) {
+        self.initialFileURLs = initialFileURLs
+        self.fileOpenCoordinator = LogFileOpenCoordinator.shared
+    }
+
+    @MainActor public init(initialFileURLs: [URL], fileOpenCoordinator: LogFileOpenCoordinator) {
+        self.initialFileURLs = initialFileURLs
+        self.fileOpenCoordinator = fileOpenCoordinator
+    }
 
     public var body: some View {
         NavigationSplitView {
@@ -42,6 +53,15 @@ public struct ContentView: View {
         .onDrop(of: [UTType.fileURL.identifier], isTargeted: $isDropTargeted) { providers in
             importDroppedFiles(providers)
         }
+        .onOpenURL { url in
+            viewModel.openFiles([url.standardizedFileURL])
+        }
+        .onReceive(fileOpenCoordinator.$request.compactMap { $0 }) { request in
+            viewModel.openFiles(request.urls)
+        }
+        .onAppear {
+            openInitialFileURLsIfNeeded()
+        }
         .overlay {
             if isDropTargeted {
                 RoundedRectangle(cornerRadius: 8)
@@ -51,6 +71,15 @@ public struct ContentView: View {
             }
         }
         .frame(minWidth: 980, minHeight: 620)
+    }
+
+    private func openInitialFileURLsIfNeeded() {
+        guard !didOpenInitialFileURLs, !initialFileURLs.isEmpty else {
+            return
+        }
+
+        didOpenInitialFileURLs = true
+        viewModel.openFiles(initialFileURLs)
     }
 
     private var toolbar: some View {

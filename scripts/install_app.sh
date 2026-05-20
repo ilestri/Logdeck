@@ -53,11 +53,35 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
       <string>Log files</string>
       <key>CFBundleTypeRole</key>
       <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>log</string>
+        <string>txt</string>
+        <string>json</string>
+        <string>jsonl</string>
+      </array>
       <key>LSItemContentTypes</key>
       <array>
+        <string>com.apple.log</string>
+        <string>public.log</string>
         <string>public.plain-text</string>
         <string>public.text</string>
         <string>public.json</string>
+        <string>public.data</string>
+      </array>
+    </dict>
+    <dict>
+      <key>CFBundleTypeName</key>
+      <string>macOS log archives</string>
+      <key>CFBundleTypeRole</key>
+      <string>Viewer</string>
+      <key>CFBundleTypeExtensions</key>
+      <array>
+        <string>logarchive</string>
+      </array>
+      <key>LSItemContentTypes</key>
+      <array>
+        <string>com.apple.logarchive</string>
       </array>
     </dict>
   </array>
