@@ -39,7 +39,7 @@ enum LogCorrelationExtractor {
     }
 
     private static func values(matching keyPattern: String, in rawText: String) -> [String] {
-        let pattern = #"(?i)"?(?:\#(keyPattern))"?\s*[:=]\s*"?([A-Za-z0-9][A-Za-z0-9._:/-]{2,})"?"#
+        let pattern = #"(?i)(?:^|[^A-Za-z0-9._-])"?(?:\#(keyPattern))"?\s*[:=]\s*"?([A-Za-z0-9][A-Za-z0-9._:/-]{2,})"?"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
             return []
         }

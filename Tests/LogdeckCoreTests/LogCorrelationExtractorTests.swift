@@ -20,6 +20,14 @@ final class LogCorrelationExtractorTests: XCTestCase {
         XCTAssertEqual(tokens.map(\.value), ["REQ-1", "TRACE-2", "SPAN-3", "CORR-4", "SID-5", "TX-6"])
     }
 
+    func testDoesNotExtractEmbeddedCorrelationKeys() {
+        let tokens = LogCorrelationExtractor.tokens(
+            from: #"not_request_id=REQ-123 mytrace_id=TRACE-1 unrelated-correlation_id=CORR-1"#
+        )
+
+        XCTAssertTrue(tokens.isEmpty)
+    }
+
     func testDeduplicatesRepeatedTokens() {
         let tokens = LogCorrelationExtractor.tokens(
             from: #"request_id=REQ-123 requestId=REQ-123 trace_id=TRACE-1"#
