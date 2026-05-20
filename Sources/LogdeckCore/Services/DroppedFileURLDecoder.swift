@@ -27,11 +27,11 @@ enum DroppedFileURLDecoder {
     }
 
     private static func fileURL(from string: String) -> URL? {
-        let trimmed = string
-            .replacingOccurrences(of: "\0", with: "")
+        let trimmed = nullSeparatedSegments(in: string)
+            .first { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }?
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        guard !trimmed.isEmpty else {
+        guard let trimmed, !trimmed.isEmpty else {
             return nil
         }
 
@@ -44,5 +44,11 @@ enum DroppedFileURLDecoder {
         }
 
         return URL(fileURLWithPath: trimmed)
+    }
+
+    private static func nullSeparatedSegments(in string: String) -> [String] {
+        string
+            .split(separator: "\0", omittingEmptySubsequences: false)
+            .map(String.init)
     }
 }

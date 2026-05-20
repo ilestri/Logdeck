@@ -15,6 +15,21 @@ final class DroppedFileURLDecoderTests: XCTestCase {
         XCTAssertEqual(DroppedFileURLDecoder.url(from: data as NSData?), url)
     }
 
+    func testDecodesNullTerminatedFileURLData() {
+        let url = URL(fileURLWithPath: "/tmp/logdeck.log")
+        let data = "\(url.absoluteString)\0".data(using: .utf8)
+
+        XCTAssertEqual(DroppedFileURLDecoder.url(from: data as NSData?), url)
+    }
+
+    func testDecodesFirstFileURLFromNullSeparatedData() {
+        let firstURL = URL(fileURLWithPath: "/tmp/first.log")
+        let secondURL = URL(fileURLWithPath: "/tmp/second.log")
+        let data = "\(firstURL.absoluteString)\0\(secondURL.absoluteString)".data(using: .utf8)
+
+        XCTAssertEqual(DroppedFileURLDecoder.url(from: data as NSData?), firstURL)
+    }
+
     func testDecodesAbsolutePathString() {
         let url = URL(fileURLWithPath: "/tmp/logdeck.log")
 
