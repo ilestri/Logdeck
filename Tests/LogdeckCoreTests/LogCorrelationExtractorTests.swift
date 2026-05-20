@@ -47,6 +47,15 @@ final class LogCorrelationExtractorTests: XCTestCase {
         XCTAssertEqual(tokens.map(\.value), ["REQ-123", "TRACE-7"])
     }
 
+    func testExtractedValuesDropTrailingSentencePeriodButKeepInternalDots() {
+        let tokens = LogCorrelationExtractor.tokens(
+            from: "request_id=REQ-123. trace_id=abc.def."
+        )
+
+        XCTAssertEqual(tokens.map(\.kind), [.requestID, .traceID])
+        XCTAssertEqual(tokens.map(\.value), ["REQ-123", "abc.def"])
+    }
+
     func testDoesNotExtractEmbeddedCorrelationKeys() {
         let tokens = LogCorrelationExtractor.tokens(
             from: #"not_request_id=REQ-123 mytrace_id=TRACE-1 unrelated-correlation_id=CORR-1"#
@@ -85,6 +94,16 @@ final class LogCorrelationExtractorTests: XCTestCase {
         let exact = LogEntry(sourceID: sourceID, lineNumber: 2, timestamp: nil, level: .info, message: "exact", rawText: "completed REQ-9")
 
         XCTAssertFalse(LogCorrelationExtractor.matches(prefixOnly, token: token))
+        XCTAssertTrue(LogCorrelationExtractor.matches(exact, token: token))
+    }
+
+    func testRawValueMatchRequiresExactCase() {
+        let sourceID = UUID()
+        let token = LogCorrelationToken(kind: .requestID, value: "Req-AbC")
+        let differentCase = LogEntry(sourceID: sourceID, lineNumber: 1, timestamp: nil, level: .info, message: "case mismatch", rawText: "completed REQ-ABC")
+        let exact = LogEntry(sourceID: sourceID, lineNumber: 2, timestamp: nil, level: .info, message: "exact", rawText: "completed Req-AbC")
+
+        XCTAssertFalse(LogCorrelationExtractor.matches(differentCase, token: token))
         XCTAssertTrue(LogCorrelationExtractor.matches(exact, token: token))
     }
 }

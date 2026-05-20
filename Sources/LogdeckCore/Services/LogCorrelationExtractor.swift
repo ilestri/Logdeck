@@ -145,7 +145,7 @@ enum LogCorrelationExtractor {
 
     private static func containsRawValue(_ value: String, in rawText: String) -> Bool {
         let escapedValue = NSRegularExpression.escapedPattern(for: value)
-        let pattern = #"(?i)(^|[^A-Za-z0-9._:/-])\#(escapedValue)(?=$|[^A-Za-z0-9._:/-])"#
+        let pattern = #"(^|[^A-Za-z0-9._:/-])\#(escapedValue)(?=$|[^A-Za-z0-9._:/-])"#
         guard let regex = try? NSRegularExpression(pattern: pattern) else {
             return false
         }
@@ -157,5 +157,5 @@ enum LogCorrelationExtractor {
 
 private extension CharacterSet {
     static let correlationValueTrimCharacters = CharacterSet.whitespacesAndNewlines
-        .union(CharacterSet(charactersIn: #""',;)]}"#))
+        .union(CharacterSet(charactersIn: #""',;.)]}"#))
 }
