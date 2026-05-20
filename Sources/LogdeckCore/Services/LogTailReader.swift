@@ -3,6 +3,7 @@ import Foundation
 struct LogTailReadResult: Sendable {
     let entries: [LogEntry]
     let nextOffset: UInt64
+    let fileIdentity: LogFileIdentity?
     let pendingText: String
     let didReset: Bool
 }
@@ -20,7 +21,8 @@ enum LogTailReader {
         }
 
         let fileSize = UInt64(try FileManager.default.fileSize(at: source.url))
-        let didReset = fileSize < source.lastReadOffset
+        let fileIdentity = try FileManager.default.fileIdentity(at: source.url)
+        let didReset = fileSize < source.lastReadOffset || didReplaceFile(source, with: fileIdentity)
         let readOffset = didReset ? 0 : source.lastReadOffset
         let effectivePendingText = didReset ? "" : pendingText
 
@@ -28,6 +30,7 @@ enum LogTailReader {
             return LogTailReadResult(
                 entries: [],
                 nextOffset: fileSize,
+                fileIdentity: fileIdentity,
                 pendingText: effectivePendingText,
                 didReset: didReset
             )
@@ -53,9 +56,18 @@ enum LogTailReader {
         return LogTailReadResult(
             entries: entries,
             nextOffset: fileSize,
+            fileIdentity: fileIdentity,
             pendingText: split.pendingText,
             didReset: didReset
         )
+    }
+
+    private static func didReplaceFile(_ source: LogSource, with fileIdentity: LogFileIdentity?) -> Bool {
+        guard let originalIdentity = source.fileIdentity, let fileIdentity else {
+            return false
+        }
+
+        return originalIdentity != fileIdentity
     }
 
     private static func splitCompleteLines(from text: String) -> (completeText: String, pendingText: String) {

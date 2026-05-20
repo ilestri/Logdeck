@@ -70,6 +70,21 @@ final class LogTailReaderTests: XCTestCase {
         XCTAssertEqual(result.entries.first?.level, .warning)
     }
 
+    func testDetectsFileReplacementWhenSizeDoesNotShrink() throws {
+        let url = temporaryFileURL()
+        try "info first\n".write(to: url, atomically: true, encoding: .utf8)
+
+        let source = try LogFileLoader.load(url: url)
+        try "WARN reset\n".write(to: url, atomically: true, encoding: .utf8)
+
+        let result = try LogTailReader.readAppendedEntries(from: source)
+
+        XCTAssertTrue(result.didReset)
+        XCTAssertEqual(result.entries.map(\.lineNumber), [1])
+        XCTAssertEqual(result.entries.map(\.message), ["WARN reset"])
+        XCTAssertEqual(result.pendingText, "")
+    }
+
     func testFileResetDropsPendingTextFromPreviousFile() throws {
         let url = temporaryFileURL()
         try "info ready\n".write(to: url, atomically: true, encoding: .utf8)

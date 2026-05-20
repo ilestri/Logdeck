@@ -36,6 +36,7 @@ enum LogFileLoader {
             id: sourceID,
             url: url,
             isTruncated: readOffset > 0,
+            fileIdentity: try FileManager.default.fileIdentity(at: url),
             lastReadOffset: UInt64(fileSize),
             entries: LogParser.parse(text: text, sourceID: sourceID)
         )
@@ -77,5 +78,32 @@ extension FileManager {
     func fileSize(at url: URL) throws -> Int {
         let attributes = try attributesOfItem(atPath: url.path)
         return attributes[.size] as? Int ?? 0
+    }
+
+    func fileIdentity(at url: URL) throws -> LogFileIdentity? {
+        let attributes = try attributesOfItem(atPath: url.path)
+        guard
+            let systemNumber = unsignedIntegerAttribute(.systemNumber, in: attributes),
+            let fileNumber = unsignedIntegerAttribute(.systemFileNumber, in: attributes)
+        else {
+            return nil
+        }
+
+        return LogFileIdentity(systemNumber: systemNumber, fileNumber: fileNumber)
+    }
+
+    private func unsignedIntegerAttribute(
+        _ key: FileAttributeKey,
+        in attributes: [FileAttributeKey: Any]
+    ) -> UInt64? {
+        if let number = attributes[key] as? NSNumber {
+            return number.uint64Value
+        }
+
+        if let integer = attributes[key] as? Int {
+            return UInt64(integer)
+        }
+
+        return nil
     }
 }

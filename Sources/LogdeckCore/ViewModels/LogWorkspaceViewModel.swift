@@ -670,6 +670,7 @@ final class LogWorkspaceViewModel: ObservableObject {
         }
 
         tailPendingText[sourceID] = result.pendingText
+        sources[index].fileIdentity = result.fileIdentity
         sources[index].lastReadOffset = result.nextOffset
 
         if result.didReset {
