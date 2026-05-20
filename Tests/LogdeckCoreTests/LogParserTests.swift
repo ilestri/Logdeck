@@ -131,6 +131,19 @@ final class LogParserTests: XCTestCase {
         XCTAssertNotNil(entry.timestamp)
     }
 
+    func testParsesLaterCoreJSONAliasesWhenEarlierAliasesAreEmptyOrInvalid() {
+        let sourceID = UUID()
+        let entry = LogParser.parseLine(
+            #"{"timestamp":"","time":"2026-05-19T04:10:20Z","level":"unknown","severity":40,"message":"   ","body":"database unavailable"}"#,
+            lineNumber: 1,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entry.level, .error)
+        XCTAssertEqual(entry.message, "database unavailable")
+        XCTAssertNotNil(entry.timestamp)
+    }
+
     func testParsesJSONKeysCaseInsensitively() {
         let sourceID = UUID()
         let entry = LogParser.parseLine(

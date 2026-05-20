@@ -42,14 +42,17 @@ enum LogParser {
             return .empty
         }
 
-        let levelValue = firstString(
+        let levelValue = firstMappedValue(
             in: dictionary,
-            keys: ["level", "severity", "status", "severity_text", "severityText", "levelname", "level_name", "log.level"]
+            keys: ["level", "severity", "status", "severity_text", "severityText", "levelname", "level_name", "log.level"],
+            transform: LogLevel.init(logValue:)
         )
-        .flatMap(LogLevel.init(logValue:))
-        let message = firstString(in: dictionary, keys: ["message", "msg", "event", "text", "body"])
-        let timestamp = firstString(in: dictionary, keys: ["timestamp", "time", "ts", "date", "@timestamp"])
-            .flatMap(parseTimestamp)
+        let message = firstNonEmptyString(in: dictionary, keys: ["message", "msg", "event", "text", "body"])
+        let timestamp = firstMappedValue(
+            in: dictionary,
+            keys: ["timestamp", "time", "ts", "date", "@timestamp"],
+            transform: parseTimestamp
+        )
         let subsystem = firstNonEmptyString(in: dictionary, keys: ["subsystem", "log.subsystem"])
         let category = firstNonEmptyString(in: dictionary, keys: ["category", "log.category"])
         let process = firstNonEmptyString(in: dictionary, keys: ["process", "process.name", "processName"])
@@ -66,12 +69,19 @@ enum LogParser {
         )
     }
 
-    private static func firstString(in dictionary: [String: Any], keys: [String]) -> String? {
+    private static func firstMappedValue<T>(
+        in dictionary: [String: Any],
+        keys: [String],
+        transform: (String) -> T?
+    ) -> T? {
         for key in keys {
-            if let value = value(in: dictionary, forKey: key),
-               let string = stringValue(from: value) {
-                return string
+            guard let value = value(in: dictionary, forKey: key),
+                  let string = stringValue(from: value),
+                  let mappedValue = transform(string) else {
+                continue
             }
+
+            return mappedValue
         }
 
         return nil
