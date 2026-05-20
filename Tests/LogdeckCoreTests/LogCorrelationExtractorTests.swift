@@ -11,6 +11,15 @@ final class LogCorrelationExtractorTests: XCTestCase {
         XCTAssertEqual(tokens.map(\.value), ["REQ-123", "abc.def", "TX-9"])
     }
 
+    func testExtractsDottedCorrelationKeys() {
+        let tokens = LogCorrelationExtractor.tokens(
+            from: #"request.id=REQ-1 trace.id=TRACE-2 span.id=SPAN-3 correlation.id=CORR-4 session.id=SID-5 transaction.id=TX-6"#
+        )
+
+        XCTAssertEqual(tokens.map(\.kind), [.requestID, .traceID, .traceID, .correlationID, .sessionID, .transactionID])
+        XCTAssertEqual(tokens.map(\.value), ["REQ-1", "TRACE-2", "SPAN-3", "CORR-4", "SID-5", "TX-6"])
+    }
+
     func testDeduplicatesRepeatedTokens() {
         let tokens = LogCorrelationExtractor.tokens(
             from: #"request_id=REQ-123 requestId=REQ-123 trace_id=TRACE-1"#

@@ -7,11 +7,11 @@ enum LogCorrelationExtractor {
     }
 
     private static let patterns: [Pattern] = [
-        Pattern(kind: .requestID, keyPattern: #"request[_-]?id|req[_-]?id|x-request-id"#),
-        Pattern(kind: .traceID, keyPattern: #"trace[_-]?id|traceid|span[_-]?id"#),
-        Pattern(kind: .correlationID, keyPattern: #"correlation[_-]?id|corr[_-]?id"#),
-        Pattern(kind: .sessionID, keyPattern: #"session[_-]?id|sid"#),
-        Pattern(kind: .transactionID, keyPattern: #"transaction[_-]?id|tx[_-]?id|txn[_-]?id"#)
+        Pattern(kind: .requestID, keyPattern: #"request[._-]?id|req[._-]?id|x-request-id"#),
+        Pattern(kind: .traceID, keyPattern: #"trace[._-]?id|traceid|span[._-]?id"#),
+        Pattern(kind: .correlationID, keyPattern: #"correlation[._-]?id|corr[._-]?id"#),
+        Pattern(kind: .sessionID, keyPattern: #"session[._-]?id|sid"#),
+        Pattern(kind: .transactionID, keyPattern: #"transaction[._-]?id|tx[._-]?id|txn[._-]?id"#)
     ]
 
     static func tokens(from entry: LogEntry) -> [LogCorrelationToken] {
