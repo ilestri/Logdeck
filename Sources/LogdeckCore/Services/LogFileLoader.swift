@@ -51,7 +51,20 @@ enum LogFileLoader {
             return false
         }
 
-        return previousByte == ASCIIByte.newline || previousByte == ASCIIByte.carriageReturn
+        if previousByte == ASCIIByte.newline {
+            return true
+        }
+
+        if previousByte == ASCIIByte.carriageReturn {
+            return try currentByte(at: readOffset, handle: handle) != ASCIIByte.newline
+        }
+
+        return false
+    }
+
+    private static func currentByte(at offset: Int, handle: FileHandle) throws -> UInt8? {
+        try handle.seek(toOffset: UInt64(offset))
+        return try handle.read(upToCount: 1)?.first
     }
 }
 

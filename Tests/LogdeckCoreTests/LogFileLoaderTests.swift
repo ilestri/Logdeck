@@ -24,6 +24,17 @@ final class LogFileLoaderTests: XCTestCase {
         XCTAssertEqual(source.entries.map(\.message), ["charlie"])
     }
 
+    func testTruncatedLoadDropsLeadingLineFeedWhenOffsetStartsInsideCRLF() throws {
+        let url = temporaryFileURL()
+        try "alpha\r\nbravo\r\ncharlie\r\n".write(to: url, atomically: true, encoding: .utf8)
+
+        let maxBytes = Data("\nbravo\r\ncharlie\r\n".utf8).count
+        let source = try LogFileLoader.load(url: url, maxBytes: maxBytes)
+
+        XCTAssertTrue(source.isTruncated)
+        XCTAssertEqual(source.entries.map(\.message), ["bravo", "charlie"])
+    }
+
     func testNegativeMaxBytesDoesNotSeekPastEndOfFile() throws {
         let url = temporaryFileURL()
         try "alpha\nbravo\n".write(to: url, atomically: true, encoding: .utf8)
