@@ -288,7 +288,7 @@ private struct ParsedJSONFields: Sendable {
 }
 
 private extension CharacterSet {
-    static let logWordSeparators = CharacterSet(charactersIn: #"[](){}<>"'`,;:|=+*/\"#)
+    static let logWordSeparators = CharacterSet(charactersIn: #"[](){}<>"'`,;:|=+*/\!?"#)
     static let logWordTrimCharacters = CharacterSet(charactersIn: #".-_"#)
 
     func contains(_ character: Character) -> Bool {
