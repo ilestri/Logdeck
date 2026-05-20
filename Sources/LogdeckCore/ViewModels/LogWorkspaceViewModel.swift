@@ -90,7 +90,7 @@ final class LogWorkspaceViewModel: ObservableObject {
             return sources.first
         }
 
-        return sources.first { $0.id == selectedSourceID }
+        return sources.first { $0.id == selectedSourceID } ?? sources.first
     }
 
     var selectedEntry: LogEntry? {
@@ -137,6 +137,10 @@ final class LogWorkspaceViewModel: ObservableObject {
 
     var canNavigateIssues: Bool {
         !visibleIssueEntries.isEmpty
+    }
+
+    var canSaveWorkspace: Bool {
+        sources.contains(where: \.isFileBacked)
     }
 
     var issueStatusLabel: String {
@@ -238,7 +242,7 @@ final class LogWorkspaceViewModel: ObservableObject {
     }
 
     func saveWorkspace(to url: URL) {
-        guard sources.contains(where: \.isFileBacked) else {
+        guard canSaveWorkspace else {
             updateStatus(
                 "Open file-backed log sources before saving a workspace.",
                 severity: .warning,

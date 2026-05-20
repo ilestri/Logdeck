@@ -69,7 +69,7 @@ public struct ContentView: View {
                 Label("Save Workspace", systemImage: "square.and.arrow.down")
             }
             .labelStyle(.iconOnly)
-            .disabled(viewModel.sources.isEmpty)
+            .disabled(!viewModel.canSaveWorkspace)
             .help("Save workspace")
 
             Button {

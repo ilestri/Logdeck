@@ -135,6 +135,17 @@ final class LogWorkspaceViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedEntry?.message, "second")
     }
 
+    func testStaleSelectedSourceFallsBackToFirstSource() {
+        let source = makeSource(path: "/tmp/current.log", messages: ["current"])
+        let viewModel = LogWorkspaceViewModel()
+
+        viewModel.selectedSourceID = UUID()
+        viewModel.sources = [source]
+
+        XCTAssertEqual(viewModel.selectedSource?.id, source.id)
+        XCTAssertEqual(viewModel.visibleEntries.map(\.message), ["current"])
+    }
+
     func testTimelineModeMergesSourcesByTimestamp() {
         let firstSourceID = UUID()
         let secondSourceID = UUID()
@@ -343,6 +354,32 @@ final class LogWorkspaceViewModelTests: XCTestCase {
 
         XCTAssertEqual(snapshot.sourcePaths, ["/tmp/api.log"])
         XCTAssertNil(snapshot.selectedSourcePath)
+    }
+
+    func testWorkspaceCanSaveOnlyWhenFileBackedSourcesExist() {
+        let unifiedSource = UnifiedLogReader.source(
+            from: [
+                UnifiedLogRecord(
+                    date: date(1),
+                    level: .info,
+                    subsystem: "com.example",
+                    category: "default",
+                    process: "Example",
+                    sender: "Example",
+                    message: "unified"
+                )
+            ]
+        )
+        let fileSource = makeSource(path: "/tmp/api.log", messages: ["api"])
+        let viewModel = LogWorkspaceViewModel()
+
+        XCTAssertFalse(viewModel.canSaveWorkspace)
+
+        viewModel.sources = [unifiedSource]
+        XCTAssertFalse(viewModel.canSaveWorkspace)
+
+        viewModel.sources = [unifiedSource, fileSource]
+        XCTAssertTrue(viewModel.canSaveWorkspace)
     }
 
     func testWorkspaceSnapshotKeepsLogArchiveSources() {
