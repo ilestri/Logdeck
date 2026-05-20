@@ -288,4 +288,43 @@ final class LogParserTests: XCTestCase {
         XCTAssertEqual(entry.level, .error)
         XCTAssertNotNil(entry.timestamp)
     }
+
+    func testParsesParenthesizedISOTimestampPrefix() {
+        let entry = LogParser.parseLine(
+            "(2026-05-19T13:10:20Z) ERROR failed to open file",
+            lineNumber: 7,
+            sourceID: UUID()
+        )
+
+        XCTAssertEqual(entry.level, .error)
+        XCTAssertNotNil(entry.timestamp)
+    }
+
+    func testParsesISOTimestampPrefixWithCommaFraction() throws {
+        let entry = LogParser.parseLine(
+            "2026-05-19T13:10:20,123Z ERROR failed to open file",
+            lineNumber: 7,
+            sourceID: UUID()
+        )
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let expected = try XCTUnwrap(formatter.date(from: "2026-05-19T13:10:20.123Z"))
+        XCTAssertEqual(try XCTUnwrap(entry.timestamp).timeIntervalSince1970, expected.timeIntervalSince1970, accuracy: 0.001)
+        XCTAssertEqual(entry.level, .error)
+    }
+
+    func testParsesLongFractionalISOTimestampPrefixWithOffset() throws {
+        let entry = LogParser.parseLine(
+            "2026-05-19T13:10:20.123456789+09:30 ERROR failed to open file",
+            lineNumber: 7,
+            sourceID: UUID()
+        )
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let expected = try XCTUnwrap(formatter.date(from: "2026-05-19T13:10:20.123456789+09:30"))
+        XCTAssertEqual(try XCTUnwrap(entry.timestamp).timeIntervalSince1970, expected.timeIntervalSince1970, accuracy: 0.001)
+        XCTAssertEqual(entry.level, .error)
+    }
 }

@@ -199,39 +199,99 @@ enum LogParser {
     }
 
     private static func parseTimestampPrefix(_ rawText: String) -> Date? {
-        let normalizedPrefix = rawText
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "[("))
-        let prefix = String(normalizedPrefix.prefix(32))
-        let separators = CharacterSet(charactersIn: " ]")
-        let firstToken = prefix.components(separatedBy: separators).first ?? prefix
-        let dateAndTime = String(prefix.prefix(19))
+        for candidate in timestampPrefixCandidates(from: rawText) {
+            if let timestamp = parseTimestamp(candidate) {
+                return timestamp
+            }
+        }
 
-        return parseTimestamp(firstToken) ?? parseTimestamp(dateAndTime)
+        return nil
+    }
+
+    private static func timestampPrefixCandidates(from rawText: String) -> [String] {
+        let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return []
+        }
+
+        let tokenSource: Substring
+        if let first = trimmed.first, first == "[" || first == "(" {
+            let body = trimmed.dropFirst()
+            let closing: Character = first == "[" ? "]" : ")"
+            if let closingIndex = body.firstIndex(of: closing) {
+                let wrappedCandidate = String(body[..<closingIndex])
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !wrappedCandidate.isEmpty {
+                    return [wrappedCandidate]
+                }
+            }
+
+            tokenSource = body
+        } else {
+            tokenSource = trimmed[trimmed.startIndex...]
+        }
+
+        var candidates: [String] = []
+
+        if let whitespaceIndex = tokenSource.firstIndex(where: \.isWhitespace) {
+            candidates.append(String(tokenSource[..<whitespaceIndex]))
+        } else {
+            candidates.append(String(tokenSource))
+        }
+
+        let dateAndTime = String(tokenSource.prefix(19))
+        if dateAndTime.count == 19, !candidates.contains(dateAndTime) {
+            candidates.append(dateAndTime)
+        }
+
+        return candidates
     }
 
     private static func parseTimestamp(_ value: String) -> Date? {
-        if let epochDate = parseEpochTimestamp(value) {
+        let candidates = timestampCandidates(from: value)
+        guard let timestamp = candidates.first else {
+            return nil
+        }
+
+        if let epochDate = parseEpochTimestamp(timestamp) {
             return epochDate
         }
 
         let isoWithFraction = ISO8601DateFormatter()
         isoWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = isoWithFraction.date(from: value) {
-            return date
+        for candidate in candidates {
+            if let date = isoWithFraction.date(from: candidate) {
+                return date
+            }
         }
 
         let iso = ISO8601DateFormatter()
         iso.formatOptions = [.withInternetDateTime]
-        if let date = iso.date(from: value) {
-            return date
+        for candidate in candidates {
+            if let date = iso.date(from: candidate) {
+                return date
+            }
         }
 
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = .current
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        return formatter.date(from: value)
+        return formatter.date(from: timestamp)
+    }
+
+    private static func timestampCandidates(from value: String) -> [String] {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return []
+        }
+
+        let commaFraction = trimmed.replacingOccurrences(of: ",", with: ".")
+        guard commaFraction != trimmed else {
+            return [trimmed]
+        }
+
+        return [trimmed, commaFraction]
     }
 
     private static func parseEpochTimestamp(_ value: String) -> Date? {
