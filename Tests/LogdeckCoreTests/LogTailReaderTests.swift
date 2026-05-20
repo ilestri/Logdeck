@@ -36,6 +36,26 @@ final class LogTailReaderTests: XCTestCase {
         XCTAssertEqual(second.pendingText, "")
     }
 
+    func testWaitsForLineFeedWhenCRLFIsSplitAcrossAppends() throws {
+        let url = temporaryFileURL()
+        try "info ready\r\n".write(to: url, atomically: true, encoding: .utf8)
+
+        var source = try LogFileLoader.load(url: url)
+        try append("ERROR failed\r", to: url)
+
+        let first = try LogTailReader.readAppendedEntries(from: source)
+        source.lastReadOffset = first.nextOffset
+
+        try append("\nWARN recovered\r\n", to: url)
+        let second = try LogTailReader.readAppendedEntries(from: source, pendingText: first.pendingText)
+
+        XCTAssertTrue(first.entries.isEmpty)
+        XCTAssertEqual(first.pendingText, "ERROR failed\r")
+        XCTAssertEqual(second.entries.map(\.lineNumber), [2, 3])
+        XCTAssertEqual(second.entries.map(\.message), ["ERROR failed", "WARN recovered"])
+        XCTAssertEqual(second.pendingText, "")
+    }
+
     func testDetectsFileReset() throws {
         let url = temporaryFileURL()
         try "info first\ninfo second\n".write(to: url, atomically: true, encoding: .utf8)

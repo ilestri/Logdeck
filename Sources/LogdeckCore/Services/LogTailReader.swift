@@ -58,11 +58,19 @@ enum LogTailReader {
     }
 
     private static func splitCompleteLines(from text: String) -> (completeText: String, pendingText: String) {
-        guard let lastNewline = text.lastIndex(where: \.isNewline) else {
+        let searchText = text.hasSuffix(String.carriageReturn)
+            ? text.dropLast()
+            : text[...]
+
+        guard let lastNewline = searchText.lastIndex(where: \.isNewline) else {
             return ("", text)
         }
 
         let completeEnd = text.index(after: lastNewline)
         return (String(text[..<completeEnd]), String(text[completeEnd...]))
     }
+}
+
+private extension String {
+    static let carriageReturn = "\r"
 }
