@@ -2,8 +2,7 @@ import Foundation
 
 enum LogParser {
     static func parse(text: String, sourceID: UUID, startingLineNumber: Int = 1) -> [LogEntry] {
-        text
-            .split(whereSeparator: \.isNewline)
+        lines(in: text)
             .enumerated()
             .map { index, line in
                 parseLine(String(line), lineNumber: startingLineNumber + index, sourceID: sourceID)
@@ -58,6 +57,19 @@ enum LogParser {
         return nil
     }
 
+    private static func lines(in text: String) -> [Substring] {
+        guard !text.isEmpty else {
+            return []
+        }
+
+        var lines = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+        if text.last?.isNewline == true {
+            lines.removeLast()
+        }
+
+        return lines
+    }
+
     private static func inferLevel(from rawText: String) -> LogLevel {
         let lowercased = rawText.lowercased()
 
@@ -81,7 +93,10 @@ enum LogParser {
     }
 
     private static func parseTimestampPrefix(_ rawText: String) -> Date? {
-        let prefix = String(rawText.prefix(32))
+        let normalizedPrefix = rawText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "[("))
+        let prefix = String(normalizedPrefix.prefix(32))
         let separators = CharacterSet(charactersIn: " ]")
         let firstToken = prefix.components(separatedBy: separators).first ?? prefix
         let dateAndTime = String(prefix.prefix(19))

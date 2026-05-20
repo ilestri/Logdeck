@@ -31,6 +31,18 @@ final class LogParserTests: XCTestCase {
         XCTAssertNotNil(entry.timestamp)
     }
 
+    func testPreservesBlankLinesWithoutAddingTrailingLine() {
+        let sourceID = UUID()
+        let entries = LogParser.parse(
+            text: "INFO first\n\nERROR third\n",
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entries.map(\.lineNumber), [1, 2, 3])
+        XCTAssertEqual(entries.map(\.message), ["INFO first", "", "ERROR third"])
+        XCTAssertEqual(entries.map(\.level), [.info, .info, .error])
+    }
+
     func testParsesPlainTimestampPrefix() {
         let sourceID = UUID()
         let entry = LogParser.parseLine(
@@ -43,5 +55,16 @@ final class LogParserTests: XCTestCase {
         XCTAssertEqual(entry.level, .error)
         XCTAssertNotNil(entry.timestamp)
     }
-}
 
+    func testParsesBracketedTimestampPrefix() {
+        let sourceID = UUID()
+        let entry = LogParser.parseLine(
+            "[2026-05-19 13:10:20] ERROR failed to open file",
+            lineNumber: 7,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entry.level, .error)
+        XCTAssertNotNil(entry.timestamp)
+    }
+}
