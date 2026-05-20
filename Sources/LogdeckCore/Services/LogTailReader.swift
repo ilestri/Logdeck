@@ -22,12 +22,13 @@ enum LogTailReader {
         let fileSize = UInt64(try FileManager.default.fileSize(at: source.url))
         let didReset = fileSize < source.lastReadOffset
         let readOffset = didReset ? 0 : source.lastReadOffset
+        let effectivePendingText = didReset ? "" : pendingText
 
         guard fileSize > readOffset else {
             return LogTailReadResult(
                 entries: [],
                 nextOffset: fileSize,
-                pendingText: pendingText,
+                pendingText: effectivePendingText,
                 didReset: didReset
             )
         }
@@ -40,7 +41,7 @@ enum LogTailReader {
         try handle.seek(toOffset: readOffset)
         let data = try handle.readToEnd() ?? Data()
         let appendedText = String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
-        let combinedText = pendingText + appendedText
+        let combinedText = effectivePendingText + appendedText
         let split = splitCompleteLines(from: combinedText)
         let startingLineNumber = didReset ? 1 : source.entries.count + 1
         let entries = LogParser.parse(

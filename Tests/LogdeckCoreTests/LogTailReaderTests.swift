@@ -70,6 +70,44 @@ final class LogTailReaderTests: XCTestCase {
         XCTAssertEqual(result.entries.first?.level, .warning)
     }
 
+    func testFileResetDropsPendingTextFromPreviousFile() throws {
+        let url = temporaryFileURL()
+        try "info ready\n".write(to: url, atomically: true, encoding: .utf8)
+
+        var source = try LogFileLoader.load(url: url)
+        try append("partial", to: url)
+
+        let first = try LogTailReader.readAppendedEntries(from: source)
+        source.lastReadOffset = first.nextOffset
+
+        try "WARN restarted\n".write(to: url, atomically: true, encoding: .utf8)
+        let reset = try LogTailReader.readAppendedEntries(from: source, pendingText: first.pendingText)
+
+        XCTAssertTrue(reset.didReset)
+        XCTAssertEqual(reset.entries.map(\.lineNumber), [1])
+        XCTAssertEqual(reset.entries.map(\.message), ["WARN restarted"])
+        XCTAssertEqual(reset.pendingText, "")
+    }
+
+    func testEmptyFileResetClearsPendingText() throws {
+        let url = temporaryFileURL()
+        try "info ready\n".write(to: url, atomically: true, encoding: .utf8)
+
+        var source = try LogFileLoader.load(url: url)
+        try append("partial", to: url)
+
+        let first = try LogTailReader.readAppendedEntries(from: source)
+        source.lastReadOffset = first.nextOffset
+
+        try "".write(to: url, atomically: true, encoding: .utf8)
+        let reset = try LogTailReader.readAppendedEntries(from: source, pendingText: first.pendingText)
+
+        XCTAssertTrue(reset.didReset)
+        XCTAssertTrue(reset.entries.isEmpty)
+        XCTAssertEqual(reset.pendingText, "")
+        XCTAssertEqual(reset.nextOffset, 0)
+    }
+
     private func temporaryFileURL() -> URL {
         FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
