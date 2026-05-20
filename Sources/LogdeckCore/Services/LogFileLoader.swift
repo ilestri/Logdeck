@@ -28,8 +28,12 @@ enum LogFileLoader {
         let data = try handle.readToEnd() ?? Data()
         var text = String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
 
-        if !startsAtLineBoundary, let firstNewline = text.firstIndex(where: \.isNewline) {
-            text.removeSubrange(...firstNewline)
+        if !startsAtLineBoundary {
+            if let firstNewline = text.firstIndex(where: \.isNewline) {
+                text.removeSubrange(...firstNewline)
+            } else {
+                text.removeAll()
+            }
         }
 
         return LogSource(
