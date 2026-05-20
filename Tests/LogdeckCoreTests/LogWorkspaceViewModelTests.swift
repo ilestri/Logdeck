@@ -85,6 +85,30 @@ final class LogWorkspaceViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 2)
     }
 
+    func testLevelFilterSetterIsIdempotent() {
+        let entries = makeEntries()
+        let viewModel = makeViewModel(entries: entries, selectedEntry: entries[0])
+
+        viewModel.setLevel(.debug, enabled: false)
+        viewModel.setLevel(.debug, enabled: false)
+        viewModel.setLevel(.error, enabled: true)
+        viewModel.setLevel(.error, enabled: true)
+
+        XCTAssertFalse(viewModel.enabledLevels.contains(.debug))
+        XCTAssertTrue(viewModel.enabledLevels.contains(.error))
+    }
+
+    func testSelectedEntryFallsBackToVisibleEntryWhenSelectionIsFilteredOut() {
+        let entries = makeEntries()
+        let viewModel = makeViewModel(entries: entries, selectedEntry: entries[0])
+
+        viewModel.enabledLevels = [.error]
+        viewModel.selectedEntryID = entries[0].id
+
+        XCTAssertEqual(viewModel.visibleEntries.map(\.lineNumber), [2])
+        XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 2)
+    }
+
     func testVisibleEntriesRebuildWhenSourceChanges() {
         let firstSourceID = UUID()
         let secondSourceID = UUID()

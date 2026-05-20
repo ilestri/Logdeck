@@ -97,6 +97,34 @@ final class LogParserTests: XCTestCase {
         XCTAssertNotNil(entry.timestamp)
     }
 
+    func testParsesJSONEpochTimestamps() {
+        let sourceID = UUID()
+        let secondsEntry = LogParser.parseLine(
+            #"{"ts":1717000000,"level":"info","msg":"seconds"}"#,
+            lineNumber: 1,
+            sourceID: sourceID
+        )
+        let millisecondsEntry = LogParser.parseLine(
+            #"{"timestamp":1717000000000,"level":"info","msg":"milliseconds"}"#,
+            lineNumber: 2,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(secondsEntry.timestamp, Date(timeIntervalSince1970: 1_717_000_000))
+        XCTAssertEqual(millisecondsEntry.timestamp, Date(timeIntervalSince1970: 1_717_000_000))
+    }
+
+    func testShortNumericPrefixIsNotTreatedAsEpochTimestamp() {
+        let entry = LogParser.parseLine(
+            "123 ERROR failed",
+            lineNumber: 1,
+            sourceID: UUID()
+        )
+
+        XCTAssertNil(entry.timestamp)
+        XCTAssertEqual(entry.level, .error)
+    }
+
     func testPreservesBlankLinesWithoutAddingTrailingLine() {
         let sourceID = UUID()
         let entries = LogParser.parse(

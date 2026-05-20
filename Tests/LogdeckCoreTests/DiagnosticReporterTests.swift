@@ -15,6 +15,16 @@ final class DiagnosticReporterTests: XCTestCase {
         XCTAssertEqual(report.recentEvents.last?.message, "failed ~/secret.log")
     }
 
+    func testNonPositiveMaxEventsKeepsEmptyEventBuffer() {
+        for maxEvents in [0, -1] {
+            let reporter = DiagnosticReporter(maxEvents: maxEvents, currentDate: fixedDate)
+
+            reporter.record(severity: .info, category: "file", message: "opened first.log")
+
+            XCTAssertTrue(reporter.makeReport(workspace: makeWorkspace()).recentEvents.isEmpty)
+        }
+    }
+
     func testWritesJSONReport() throws {
         let reporter = DiagnosticReporter(currentDate: fixedDate)
         reporter.record(severity: .error, category: "workspace", message: "failed to open workspace")
