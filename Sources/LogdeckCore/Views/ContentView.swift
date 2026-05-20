@@ -284,8 +284,8 @@ public struct ContentView: View {
     private func levelBinding(_ level: LogLevel) -> Binding<Bool> {
         Binding {
             viewModel.enabledLevels.contains(level)
-        } set: { _ in
-            viewModel.toggleLevel(level)
+        } set: { isEnabled in
+            viewModel.setLevel(level, enabled: isEnabled)
         }
     }
 

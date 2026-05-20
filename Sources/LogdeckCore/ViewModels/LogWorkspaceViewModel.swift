@@ -98,7 +98,7 @@ final class LogWorkspaceViewModel: ObservableObject {
             return visibleEntries.first
         }
 
-        return entry(withID: selectedEntryID) ?? visibleEntries.first
+        return visibleEntries.first { $0.id == selectedEntryID } ?? visibleEntries.first
     }
 
     var selectedEntrySource: LogSource? {
@@ -356,10 +356,14 @@ final class LogWorkspaceViewModel: ObservableObject {
     }
 
     func toggleLevel(_ level: LogLevel) {
-        if enabledLevels.contains(level) {
-            enabledLevels.remove(level)
-        } else {
+        setLevel(level, enabled: !enabledLevels.contains(level))
+    }
+
+    func setLevel(_ level: LogLevel, enabled: Bool) {
+        if enabled {
             enabledLevels.insert(level)
+        } else {
+            enabledLevels.remove(level)
         }
     }
 
@@ -573,12 +577,6 @@ final class LogWorkspaceViewModel: ObservableObject {
 
             return lhs.lineNumber < rhs.lineNumber
         }
-    }
-
-    private func entry(withID entryID: LogEntry.ID) -> LogEntry? {
-        sources.lazy
-            .flatMap(\.entries)
-            .first { $0.id == entryID }
     }
 
     private func source(containing entry: LogEntry) -> LogSource? {

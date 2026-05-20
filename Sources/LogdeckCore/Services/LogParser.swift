@@ -142,6 +142,10 @@ enum LogParser {
     }
 
     private static func parseTimestamp(_ value: String) -> Date? {
+        if let epochDate = parseEpochTimestamp(value) {
+            return epochDate
+        }
+
         let isoWithFraction = ISO8601DateFormatter()
         isoWithFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let date = isoWithFraction.date(from: value) {
@@ -159,6 +163,24 @@ enum LogParser {
         formatter.timeZone = .current
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return formatter.date(from: value)
+    }
+
+    private static func parseEpochTimestamp(_ value: String) -> Date? {
+        guard let number = Double(value.trimmingCharacters(in: .whitespacesAndNewlines)),
+              number.isFinite,
+              abs(number) >= 100_000_000 else {
+            return nil
+        }
+
+        let absoluteValue = abs(number)
+        let seconds: TimeInterval
+        if absoluteValue >= 1_000_000_000_000 {
+            seconds = number / 1_000
+        } else {
+            seconds = number
+        }
+
+        return Date(timeIntervalSince1970: seconds)
     }
 }
 

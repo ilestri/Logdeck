@@ -6,7 +6,7 @@ final class DiagnosticReporter {
     private var events: [DiagnosticEvent] = []
 
     init(maxEvents: Int = 100, currentDate: @escaping () -> Date = Date.init) {
-        self.maxEvents = maxEvents
+        self.maxEvents = max(0, maxEvents)
         self.currentDate = currentDate
     }
 
