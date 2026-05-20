@@ -38,9 +38,9 @@ struct LogWorkspaceDocument: Codable, Equatable, Sendable {
         version = try container.decodeIfPresent(Int.self, forKey: .version) ?? Self.currentVersion
         sourcePaths = try container.decode([String].self, forKey: .sourcePaths)
         selectedSourcePath = try container.decodeIfPresent(String.self, forKey: .selectedSourcePath)
-        displayMode = try container.decode(LogDisplayMode.self, forKey: .displayMode)
-        query = try container.decode(String.self, forKey: .query)
-        enabledLevels = try container.decode([LogLevel].self, forKey: .enabledLevels)
+        displayMode = try container.decodeIfPresent(LogDisplayMode.self, forKey: .displayMode) ?? .source
+        query = try container.decodeIfPresent(String.self, forKey: .query) ?? ""
+        enabledLevels = try container.decodeIfPresent([LogLevel].self, forKey: .enabledLevels) ?? LogLevel.allCases
         metadataFilters = try container.decodeIfPresent(LogMetadataFilters.self, forKey: .metadataFilters)
         pinnedToken = try container.decodeIfPresent(LogCorrelationToken.self, forKey: .pinnedToken)
     }
