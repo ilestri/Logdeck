@@ -300,9 +300,12 @@ public struct ContentView: View {
     }
 
     private func importDroppedFiles(_ providers: [NSItemProvider]) -> Bool {
+        var didAcceptProvider = false
+
         for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            didAcceptProvider = true
             provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier, options: nil) { item, _ in
-                guard let url = url(fromDropItem: item) else {
+                guard let url = DroppedFileURLDecoder.url(from: item) else {
                     return
                 }
 
@@ -312,19 +315,6 @@ public struct ContentView: View {
             }
         }
 
-        return true
-    }
-
-    private func url(fromDropItem item: NSSecureCoding?) -> URL? {
-        if let url = item as? URL {
-            return url
-        }
-
-        if let data = item as? Data,
-           let string = String(data: data, encoding: .utf8) {
-            return URL(string: string.trimmingCharacters(in: .whitespacesAndNewlines))
-        }
-
-        return nil
+        return didAcceptProvider
     }
 }

@@ -40,6 +40,41 @@ final class LogWorkspaceViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 4)
     }
 
+    func testIssueNavigationFollowsTimelineOrderAcrossSources() {
+        let firstSourceID = UUID()
+        let secondSourceID = UUID()
+        let firstIssue = LogEntry(
+            sourceID: firstSourceID,
+            lineNumber: 2,
+            timestamp: date(10),
+            level: .error,
+            message: "first issue",
+            rawText: "error first"
+        )
+        let secondIssue = LogEntry(
+            sourceID: secondSourceID,
+            lineNumber: 1,
+            timestamp: date(20),
+            level: .fault,
+            message: "second issue",
+            rawText: "fault second"
+        )
+        let viewModel = LogWorkspaceViewModel()
+
+        viewModel.sources = [
+            LogSource(id: firstSourceID, url: URL(fileURLWithPath: "/tmp/first.log"), entries: [firstIssue]),
+            LogSource(id: secondSourceID, url: URL(fileURLWithPath: "/tmp/second.log"), entries: [secondIssue])
+        ]
+        viewModel.displayMode = .timeline
+        viewModel.selectedEntryID = firstIssue.id
+
+        viewModel.selectNextIssue()
+        XCTAssertEqual(viewModel.selectedEntry?.message, "second issue")
+
+        viewModel.selectPreviousIssue()
+        XCTAssertEqual(viewModel.selectedEntry?.message, "first issue")
+    }
+
     func testVisibleEntriesRebuildWhenLevelFilterChanges() {
         let entries = makeEntries()
         let viewModel = makeViewModel(entries: entries, selectedEntry: entries[0])

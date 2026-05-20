@@ -474,15 +474,29 @@ final class LogWorkspaceViewModel: ObservableObject {
             return nil
         }
 
-        guard let selectedEntry else {
+        guard let selectedEntry,
+              let selectedIndex = visibleEntries.firstIndex(where: { $0.id == selectedEntry.id })
+        else {
             return forward ? issues.first : issues.last
         }
 
-        if forward {
-            return issues.first { $0.lineNumber > selectedEntry.lineNumber } ?? issues.first
+        var index = forward ? selectedIndex + 1 : selectedIndex - 1
+        for _ in 0..<visibleEntries.count {
+            if index == visibleEntries.count {
+                index = 0
+            } else if index < 0 {
+                index = visibleEntries.count - 1
+            }
+
+            let candidate = visibleEntries[index]
+            if candidate.level.isIssueLevel {
+                return candidate
+            }
+
+            index += forward ? 1 : -1
         }
 
-        return issues.last { $0.lineNumber < selectedEntry.lineNumber } ?? issues.last
+        return forward ? issues.first : issues.last
     }
 
     private func rebuildVisibleEntries(resetSelectionIfNeeded: Bool = false) {
