@@ -174,7 +174,11 @@ enum LogParser {
 
         let absoluteValue = abs(number)
         let seconds: TimeInterval
-        if absoluteValue >= 1_000_000_000_000 {
+        if absoluteValue >= 1_000_000_000_000_000_000 {
+            seconds = number / 1_000_000_000
+        } else if absoluteValue >= 1_000_000_000_000_000 {
+            seconds = number / 1_000_000
+        } else if absoluteValue >= 1_000_000_000_000 {
             seconds = number / 1_000
         } else {
             seconds = number

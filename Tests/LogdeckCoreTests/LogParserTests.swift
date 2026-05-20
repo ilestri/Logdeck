@@ -97,7 +97,7 @@ final class LogParserTests: XCTestCase {
         XCTAssertNotNil(entry.timestamp)
     }
 
-    func testParsesJSONEpochTimestamps() {
+    func testParsesJSONEpochTimestamps() throws {
         let sourceID = UUID()
         let secondsEntry = LogParser.parseLine(
             #"{"ts":1717000000,"level":"info","msg":"seconds"}"#,
@@ -109,9 +109,21 @@ final class LogParserTests: XCTestCase {
             lineNumber: 2,
             sourceID: sourceID
         )
+        let microsecondsEntry = LogParser.parseLine(
+            #"{"timestamp":1717000000000000,"level":"info","msg":"microseconds"}"#,
+            lineNumber: 3,
+            sourceID: sourceID
+        )
+        let nanosecondsEntry = LogParser.parseLine(
+            #"{"timestamp":1717000000000000000,"level":"info","msg":"nanoseconds"}"#,
+            lineNumber: 4,
+            sourceID: sourceID
+        )
 
-        XCTAssertEqual(secondsEntry.timestamp, Date(timeIntervalSince1970: 1_717_000_000))
-        XCTAssertEqual(millisecondsEntry.timestamp, Date(timeIntervalSince1970: 1_717_000_000))
+        XCTAssertEqual(try XCTUnwrap(secondsEntry.timestamp).timeIntervalSince1970, 1_717_000_000, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(millisecondsEntry.timestamp).timeIntervalSince1970, 1_717_000_000, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(microsecondsEntry.timestamp).timeIntervalSince1970, 1_717_000_000, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(nanosecondsEntry.timestamp).timeIntervalSince1970, 1_717_000_000, accuracy: 0.001)
     }
 
     func testShortNumericPrefixIsNotTreatedAsEpochTimestamp() {
