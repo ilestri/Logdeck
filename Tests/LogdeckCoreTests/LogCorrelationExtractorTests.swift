@@ -20,6 +20,24 @@ final class LogCorrelationExtractorTests: XCTestCase {
         XCTAssertEqual(tokens.map(\.value), ["REQ-1", "TRACE-2", "SPAN-3", "CORR-4", "SID-5", "TX-6"])
     }
 
+    func testExtractsNestedJSONCorrelationKeys() {
+        let tokens = LogCorrelationExtractor.tokens(
+            from: #"{"request":{"id":"REQ-123"},"trace":{"id":"TRACE-1"},"session":{"id":"SID-9"}}"#
+        )
+
+        XCTAssertEqual(tokens.map(\.kind), [.requestID, .traceID, .sessionID])
+        XCTAssertEqual(tokens.map(\.value), ["REQ-123", "TRACE-1", "SID-9"])
+    }
+
+    func testExtractsNestedJSONCorrelationKeySuffixes() {
+        let tokens = LogCorrelationExtractor.tokens(
+            from: #"{"attributes":{"request_id":"REQ-123","not_request_id":"REQ-999"},"otel":{"trace":{"id":"TRACE-7"}}}"#
+        )
+
+        XCTAssertEqual(tokens.map(\.kind), [.requestID, .traceID])
+        XCTAssertEqual(tokens.map(\.value), ["REQ-123", "TRACE-7"])
+    }
+
     func testDoesNotExtractEmbeddedCorrelationKeys() {
         let tokens = LogCorrelationExtractor.tokens(
             from: #"not_request_id=REQ-123 mytrace_id=TRACE-1 unrelated-correlation_id=CORR-1"#
