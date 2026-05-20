@@ -13,12 +13,14 @@ enum LogFileLoader {
         }
 
         let fileSize = try FileManager.default.fileSize(at: url)
-        let readOffset = max(0, fileSize - maxBytes)
+        let byteLimit = max(0, maxBytes)
+        let readOffset = max(0, fileSize - byteLimit)
         let handle = try FileHandle(forReadingFrom: url)
         defer {
             try? handle.close()
         }
 
+        let startsAtLineBoundary = try startsAtLineBoundary(readOffset: readOffset, handle: handle)
         if readOffset > 0 {
             try handle.seek(toOffset: UInt64(readOffset))
         }
@@ -26,7 +28,7 @@ enum LogFileLoader {
         let data = try handle.readToEnd() ?? Data()
         var text = String(data: data, encoding: .utf8) ?? String(decoding: data, as: UTF8.self)
 
-        if readOffset > 0, let firstNewline = text.firstIndex(where: \.isNewline) {
+        if !startsAtLineBoundary, let firstNewline = text.firstIndex(where: \.isNewline) {
             text.removeSubrange(...firstNewline)
         }
 
@@ -38,6 +40,24 @@ enum LogFileLoader {
             entries: LogParser.parse(text: text, sourceID: sourceID)
         )
     }
+
+    private static func startsAtLineBoundary(readOffset: Int, handle: FileHandle) throws -> Bool {
+        guard readOffset > 0 else {
+            return true
+        }
+
+        try handle.seek(toOffset: UInt64(readOffset - 1))
+        guard let previousByte = try handle.read(upToCount: 1)?.first else {
+            return false
+        }
+
+        return previousByte == ASCIIByte.newline || previousByte == ASCIIByte.carriageReturn
+    }
+}
+
+private enum ASCIIByte {
+    static let newline: UInt8 = 10
+    static let carriageReturn: UInt8 = 13
 }
 
 extension FileManager {
