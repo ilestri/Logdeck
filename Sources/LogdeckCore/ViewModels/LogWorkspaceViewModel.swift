@@ -707,7 +707,7 @@ final class LogWorkspaceViewModel: ObservableObject {
     private func diagnosticWorkspaceSnapshot() -> DiagnosticWorkspaceSnapshot {
         DiagnosticWorkspaceSnapshot(
             displayMode: displayMode,
-            queryActive: !query.isEmpty,
+            queryActive: !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             enabledLevels: LogLevel.allCases.filter { enabledLevels.contains($0) },
             metadataFiltersActive: metadataFilters.isActive,
             pinnedTokenLabel: pinnedToken?.label,

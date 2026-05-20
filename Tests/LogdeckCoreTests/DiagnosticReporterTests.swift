@@ -77,10 +77,34 @@ final class LogWorkspaceDiagnosticsTests: XCTestCase {
         let json = String(decoding: try encoder.encode(report), as: UTF8.self)
         XCTAssertFalse(json.contains(NSHomeDirectory()))
     }
+
+    func testDiagnosticReportTreatsWhitespaceOnlyQueryAsInactive() {
+        let viewModel = LogWorkspaceViewModel(
+            diagnosticReporter: DiagnosticReporter(currentDate: fixedDate)
+        )
+
+        viewModel.sources = [makeDiagnosticSource()]
+        viewModel.query = " \n\t "
+
+        XCTAssertFalse(viewModel.makeDiagnosticReport().workspace.queryActive)
+    }
 }
 
 private func fixedDate() -> Date {
     Date(timeIntervalSince1970: 1_700_000_000)
+}
+
+private func makeDiagnosticSource() -> LogSource {
+    let sourceID = UUID()
+    return LogSource(
+        id: sourceID,
+        url: URL(fileURLWithPath: "/tmp/app.log"),
+        name: "app.log",
+        loadedAt: fixedDate(),
+        entries: [
+            LogEntry(sourceID: sourceID, lineNumber: 1, timestamp: nil, level: .info, message: "ready", rawText: "info ready")
+        ]
+    )
 }
 
 private func makeWorkspace() -> DiagnosticWorkspaceSnapshot {
