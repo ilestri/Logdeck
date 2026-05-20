@@ -40,6 +40,12 @@ struct LogEntry: Identifiable, Hashable, Sendable {
     }
 
     var hasUnifiedMetadata: Bool {
-        subsystem != nil || category != nil || process != nil || sender != nil
+        [subsystem, category, process, sender].contains { value in
+            guard let value else {
+                return false
+            }
+
+            return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
 }

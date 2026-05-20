@@ -297,6 +297,34 @@ final class LogWorkspaceViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.visibleEntries.map(\.message), ["api failed"])
     }
 
+    func testWhitespaceOnlyMetadataDoesNotEnableMetadataFilters() {
+        let sourceID = UUID()
+        let source = LogSource(
+            id: sourceID,
+            url: URL(fileURLWithPath: "/tmp/plain.log"),
+            entries: [
+                LogEntry(
+                    sourceID: sourceID,
+                    lineNumber: 1,
+                    timestamp: nil,
+                    level: .info,
+                    message: "plain",
+                    rawText: "plain",
+                    subsystem: " ",
+                    category: "\n",
+                    process: "\t",
+                    sender: ""
+                )
+            ]
+        )
+        let viewModel = LogWorkspaceViewModel()
+
+        viewModel.sources = [source]
+
+        XCTAssertFalse(viewModel.showsMetadataFilters)
+        XCTAssertFalse(viewModel.visibleEntries[0].hasUnifiedMetadata)
+    }
+
     func testClearsMetadataFilters() {
         let viewModel = LogWorkspaceViewModel()
 
