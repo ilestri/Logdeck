@@ -26,5 +26,26 @@ final class LogQueryFilterTests: XCTestCase {
 
         XCTAssertEqual(filter.apply(to: entries).map(\.lineNumber), [2])
     }
-}
 
+    func testInvalidSlashDelimitedRegexMatchesNothing() {
+        let sourceID = UUID()
+        let entries = [
+            LogEntry(sourceID: sourceID, lineNumber: 1, timestamp: nil, level: .info, message: "contains /[/ literally", rawText: "contains /[/ literally")
+        ]
+
+        let filter = LogQueryFilter(query: #"/[/"#, enabledLevels: [.info])
+
+        XCTAssertTrue(filter.apply(to: entries).isEmpty)
+    }
+
+    func testEmptySlashDelimitedQueryFallsBackToTextSearch() {
+        let sourceID = UUID()
+        let entries = [
+            LogEntry(sourceID: sourceID, lineNumber: 1, timestamp: nil, level: .info, message: "typed //", rawText: "typed //")
+        ]
+
+        let filter = LogQueryFilter(query: #"//"#, enabledLevels: [.info])
+
+        XCTAssertEqual(filter.apply(to: entries).map(\.lineNumber), [1])
+    }
+}

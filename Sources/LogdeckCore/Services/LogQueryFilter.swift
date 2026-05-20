@@ -12,29 +12,41 @@ struct LogQueryFilter {
             return levelFiltered
         }
 
-        if let regex = makeRegex(from: trimmedQuery) {
+        switch parsedQuery(from: trimmedQuery) {
+        case let .regex(regex):
             return levelFiltered.filter { entry in
                 let range = NSRange(entry.rawText.startIndex..<entry.rawText.endIndex, in: entry.rawText)
                 return regex.firstMatch(in: entry.rawText, range: range) != nil
             }
-        }
-
-        return levelFiltered.filter {
-            $0.rawText.localizedCaseInsensitiveContains(trimmedQuery)
+        case .invalidRegex:
+            return []
+        case let .text(text):
+            return levelFiltered.filter {
+                $0.rawText.localizedCaseInsensitiveContains(text)
+            }
         }
     }
 
-    private func makeRegex(from query: String) -> NSRegularExpression? {
+    private func parsedQuery(from query: String) -> ParsedQuery {
         guard query.count >= 2, query.hasPrefix("/"), query.hasSuffix("/") else {
-            return nil
+            return .text(query)
         }
 
         let pattern = String(query.dropFirst().dropLast())
         guard !pattern.isEmpty else {
-            return nil
+            return .text(query)
         }
 
-        return try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+        do {
+            return .regex(try NSRegularExpression(pattern: pattern, options: [.caseInsensitive]))
+        } catch {
+            return .invalidRegex
+        }
     }
 }
 
+private enum ParsedQuery {
+    case text(String)
+    case regex(NSRegularExpression)
+    case invalidRegex
+}
