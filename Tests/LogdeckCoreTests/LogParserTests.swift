@@ -103,6 +103,21 @@ final class LogParserTests: XCTestCase {
         XCTAssertEqual(entry.sender, "ExampleBinary")
     }
 
+    func testParsesLaterMetadataAliasWhenEarlierAliasIsEmpty() {
+        let sourceID = UUID()
+        let entry = LogParser.parseLine(
+            #"{"timestamp":"2026-05-19T04:10:20Z","level":"info","message":"request started","subsystem":"   ","category":"","process":"","sender":"","log":{"subsystem":"com.example.api","category":"network"},"processName":"ExampleApp","senderName":"ExampleBinary"}"#,
+            lineNumber: 1,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entry.subsystem, "com.example.api")
+        XCTAssertEqual(entry.category, "network")
+        XCTAssertEqual(entry.process, "ExampleApp")
+        XCTAssertEqual(entry.sender, "ExampleBinary")
+        XCTAssertTrue(entry.hasUnifiedMetadata)
+    }
+
     func testParsesCommonJSONLogFieldVariants() {
         let sourceID = UUID()
         let entry = LogParser.parseLine(

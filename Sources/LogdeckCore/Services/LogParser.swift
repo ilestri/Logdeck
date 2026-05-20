@@ -112,13 +112,17 @@ enum LogParser {
     }
 
     private static func firstNonEmptyString(in dictionary: [String: Any], keys: [String]) -> String? {
-        guard let value = firstString(in: dictionary, keys: keys)?
-            .trimmingCharacters(in: .whitespacesAndNewlines),
-            !value.isEmpty else {
-            return nil
+        for key in keys {
+            guard let value = value(in: dictionary, forKey: key),
+                  let string = stringValue(from: value)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !string.isEmpty else {
+                continue
+            }
+
+            return string
         }
 
-        return value
+        return nil
     }
 
     private static func stringValue(from value: Any) -> String? {
