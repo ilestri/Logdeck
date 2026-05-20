@@ -73,6 +73,36 @@ final class LogParserTests: XCTestCase {
         XCTAssertTrue(entry.hasUnifiedMetadata)
     }
 
+    func testParsesNestedJSONMetadataFields() {
+        let sourceID = UUID()
+        let entry = LogParser.parseLine(
+            #"{"timestamp":"2026-05-19T04:10:20Z","level":"info","message":"request started","log":{"subsystem":"com.example.api","category":"network"},"process":{"name":"ExampleApp"},"sender":{"name":"ExampleBinary"}}"#,
+            lineNumber: 1,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entry.subsystem, "com.example.api")
+        XCTAssertEqual(entry.category, "network")
+        XCTAssertEqual(entry.process, "ExampleApp")
+        XCTAssertEqual(entry.sender, "ExampleBinary")
+        XCTAssertTrue(entry.hasUnifiedMetadata)
+    }
+
+    func testParsesNestedJSONAliasFields() {
+        let sourceID = UUID()
+        let entry = LogParser.parseLine(
+            #"{"timestamp":"2026-05-19T04:10:20Z","message":"request started","log":{"level":"verbose","subsystem":"com.example.api","category":"network"},"process":{"name":"ExampleApp"},"sender":{"name":"ExampleBinary"}}"#,
+            lineNumber: 1,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entry.level, .debug)
+        XCTAssertEqual(entry.subsystem, "com.example.api")
+        XCTAssertEqual(entry.category, "network")
+        XCTAssertEqual(entry.process, "ExampleApp")
+        XCTAssertEqual(entry.sender, "ExampleBinary")
+    }
+
     func testParsesCommonJSONLogFieldVariants() {
         let sourceID = UUID()
         let entry = LogParser.parseLine(

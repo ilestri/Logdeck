@@ -67,19 +67,48 @@ enum LogParser {
     }
 
     private static func firstString(in dictionary: [String: Any], keys: [String]) -> String? {
-        var lowercaseDictionary: [String: Any] = [:]
-        for (key, value) in dictionary where lowercaseDictionary[key.lowercased()] == nil {
-            lowercaseDictionary[key.lowercased()] = value
-        }
-
         for key in keys {
-            if let value = lowercaseDictionary[key.lowercased()],
+            if let value = value(in: dictionary, forKey: key),
                let string = stringValue(from: value) {
                 return string
             }
         }
 
         return nil
+    }
+
+    private static func value(in dictionary: [String: Any], forKey key: String) -> Any? {
+        let lookup = caseInsensitiveLookup(from: dictionary)
+        let normalizedKey = key.lowercased()
+
+        if let value = lookup[normalizedKey] {
+            return value
+        }
+
+        guard normalizedKey.contains(".") else {
+            return nil
+        }
+
+        var current: Any = dictionary
+        for component in normalizedKey.split(separator: ".").map(String.init) {
+            guard let currentDictionary = current as? [String: Any],
+                  let next = caseInsensitiveLookup(from: currentDictionary)[component] else {
+                return nil
+            }
+
+            current = next
+        }
+
+        return current
+    }
+
+    private static func caseInsensitiveLookup(from dictionary: [String: Any]) -> [String: Any] {
+        var lookup: [String: Any] = [:]
+        for (key, value) in dictionary where lookup[key.lowercased()] == nil {
+            lookup[key.lowercased()] = value
+        }
+
+        return lookup
     }
 
     private static func firstNonEmptyString(in dictionary: [String: Any], keys: [String]) -> String? {
