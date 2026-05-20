@@ -21,21 +21,25 @@ enum LogParser {
             timestamp: timestamp,
             level: level,
             message: message,
-            rawText: rawText
+            rawText: rawText,
+            subsystem: fields.subsystem,
+            category: fields.category,
+            process: fields.process,
+            sender: fields.sender
         )
     }
 
-    private static func parseJSONFields(from rawText: String) -> (level: LogLevel?, message: String?, timestamp: Date?) {
+    private static func parseJSONFields(from rawText: String) -> ParsedJSONFields {
         let trimmed = rawText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.first == "{", let data = trimmed.data(using: .utf8) else {
-            return (nil, nil, nil)
+            return .empty
         }
 
         guard
             let object = try? JSONSerialization.jsonObject(with: data),
             let dictionary = object as? [String: Any]
         else {
-            return (nil, nil, nil)
+            return .empty
         }
 
         let levelValue = firstString(
@@ -46,8 +50,20 @@ enum LogParser {
         let message = firstString(in: dictionary, keys: ["message", "msg", "event", "text", "body"])
         let timestamp = firstString(in: dictionary, keys: ["timestamp", "time", "ts", "date", "@timestamp"])
             .flatMap(parseTimestamp)
+        let subsystem = firstNonEmptyString(in: dictionary, keys: ["subsystem", "log.subsystem"])
+        let category = firstNonEmptyString(in: dictionary, keys: ["category", "log.category"])
+        let process = firstNonEmptyString(in: dictionary, keys: ["process", "process.name", "processName"])
+        let sender = firstNonEmptyString(in: dictionary, keys: ["sender", "sender.name", "senderName"])
 
-        return (levelValue, message, timestamp)
+        return ParsedJSONFields(
+            level: levelValue,
+            message: message,
+            timestamp: timestamp,
+            subsystem: subsystem,
+            category: category,
+            process: process,
+            sender: sender
+        )
     }
 
     private static func firstString(in dictionary: [String: Any], keys: [String]) -> String? {
@@ -64,6 +80,16 @@ enum LogParser {
         }
 
         return nil
+    }
+
+    private static func firstNonEmptyString(in dictionary: [String: Any], keys: [String]) -> String? {
+        guard let value = firstString(in: dictionary, keys: keys)?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !value.isEmpty else {
+            return nil
+        }
+
+        return value
     }
 
     private static func stringValue(from value: Any) -> String? {
@@ -185,6 +211,36 @@ enum LogParser {
         }
 
         return Date(timeIntervalSince1970: seconds)
+    }
+}
+
+private struct ParsedJSONFields: Sendable {
+    static let empty = ParsedJSONFields()
+
+    let level: LogLevel?
+    let message: String?
+    let timestamp: Date?
+    let subsystem: String?
+    let category: String?
+    let process: String?
+    let sender: String?
+
+    init(
+        level: LogLevel? = nil,
+        message: String? = nil,
+        timestamp: Date? = nil,
+        subsystem: String? = nil,
+        category: String? = nil,
+        process: String? = nil,
+        sender: String? = nil
+    ) {
+        self.level = level
+        self.message = message
+        self.timestamp = timestamp
+        self.subsystem = subsystem
+        self.category = category
+        self.process = process
+        self.sender = sender
     }
 }
 
