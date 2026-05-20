@@ -31,6 +31,45 @@ final class LogParserTests: XCTestCase {
         XCTAssertNotNil(entry.timestamp)
     }
 
+    func testParsesCommonJSONLogFieldVariants() {
+        let sourceID = UUID()
+        let entry = LogParser.parseLine(
+            #"{"@timestamp":"2026-05-19T04:10:20Z","severity_text":"WARN","body":"cache miss"}"#,
+            lineNumber: 1,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entry.level, .warning)
+        XCTAssertEqual(entry.message, "cache miss")
+        XCTAssertNotNil(entry.timestamp)
+    }
+
+    func testParsesJSONKeysCaseInsensitively() {
+        let sourceID = UUID()
+        let entry = LogParser.parseLine(
+            #"{"Time":"2026-05-19T04:10:20Z","Level":"FATAL","Message":"kernel panic"}"#,
+            lineNumber: 1,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entry.level, .fault)
+        XCTAssertEqual(entry.message, "kernel panic")
+        XCTAssertNotNil(entry.timestamp)
+    }
+
+    func testParsesJSONNumericSeverity() {
+        let sourceID = UUID()
+        let entry = LogParser.parseLine(
+            #"{"ts":"2026-05-19T04:10:20Z","severity":40,"msg":"request failed"}"#,
+            lineNumber: 1,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entry.level, .error)
+        XCTAssertEqual(entry.message, "request failed")
+        XCTAssertNotNil(entry.timestamp)
+    }
+
     func testPreservesBlankLinesWithoutAddingTrailingLine() {
         let sourceID = UUID()
         let entries = LogParser.parse(

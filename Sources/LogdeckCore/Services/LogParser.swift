@@ -38,20 +38,41 @@ enum LogParser {
             return (nil, nil, nil)
         }
 
-        let levelValue = firstString(in: dictionary, keys: ["level", "severity", "status"])
-            .flatMap(LogLevel.init)
-        let message = firstString(in: dictionary, keys: ["message", "msg", "event", "text"])
-        let timestamp = firstString(in: dictionary, keys: ["timestamp", "time", "ts", "date"])
+        let levelValue = firstString(
+            in: dictionary,
+            keys: ["level", "severity", "status", "severity_text", "severityText", "levelname", "level_name", "log.level"]
+        )
+        .flatMap(LogLevel.init(logValue:))
+        let message = firstString(in: dictionary, keys: ["message", "msg", "event", "text", "body"])
+        let timestamp = firstString(in: dictionary, keys: ["timestamp", "time", "ts", "date", "@timestamp"])
             .flatMap(parseTimestamp)
 
         return (levelValue, message, timestamp)
     }
 
     private static func firstString(in dictionary: [String: Any], keys: [String]) -> String? {
+        var lowercaseDictionary: [String: Any] = [:]
+        for (key, value) in dictionary where lowercaseDictionary[key.lowercased()] == nil {
+            lowercaseDictionary[key.lowercased()] = value
+        }
+
         for key in keys {
-            if let value = dictionary[key] as? String {
-                return value
+            if let value = lowercaseDictionary[key.lowercased()],
+               let string = stringValue(from: value) {
+                return string
             }
+        }
+
+        return nil
+    }
+
+    private static func stringValue(from value: Any) -> String? {
+        if let string = value as? String {
+            return string
+        }
+
+        if let number = value as? NSNumber {
+            return number.stringValue
         }
 
         return nil
