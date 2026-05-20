@@ -47,6 +47,34 @@ final class LogWorkspaceStoreTests: XCTestCase {
         XCTAssertEqual(restored.enabledLevels, [.info, .error])
     }
 
+    func testReadsWorkspaceDocumentWithoutVersion() throws {
+        let url = temporaryURL(filename: "unversioned.logdeck")
+        let json = """
+        {
+          "displayMode" : "source",
+          "enabledLevels" : [
+            "debug",
+            "info",
+            "warning",
+            "error",
+            "fault"
+          ],
+          "query" : "",
+          "selectedSourcePath" : "/tmp/api.log",
+          "sourcePaths" : [
+            "/tmp/api.log"
+          ]
+        }
+        """
+
+        let data = try XCTUnwrap(json.data(using: .utf8))
+        try data.write(to: url)
+        let restored = try LogWorkspaceStore.read(from: url)
+
+        XCTAssertEqual(restored.version, LogWorkspaceDocument.currentVersion)
+        XCTAssertEqual(restored.sourcePaths, ["/tmp/api.log"])
+    }
+
     func testRejectsFutureWorkspaceVersion() throws {
         let url = temporaryURL(filename: "future.logdeck")
         let futureVersion = LogWorkspaceDocument.currentVersion + 1

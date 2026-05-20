@@ -31,4 +31,17 @@ struct LogWorkspaceDocument: Codable, Equatable, Sendable {
         self.metadataFilters = metadataFilters
         self.pinnedToken = pinnedToken
     }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        version = try container.decodeIfPresent(Int.self, forKey: .version) ?? Self.currentVersion
+        sourcePaths = try container.decode([String].self, forKey: .sourcePaths)
+        selectedSourcePath = try container.decodeIfPresent(String.self, forKey: .selectedSourcePath)
+        displayMode = try container.decode(LogDisplayMode.self, forKey: .displayMode)
+        query = try container.decode(String.self, forKey: .query)
+        enabledLevels = try container.decode([LogLevel].self, forKey: .enabledLevels)
+        metadataFilters = try container.decodeIfPresent(LogMetadataFilters.self, forKey: .metadataFilters)
+        pinnedToken = try container.decodeIfPresent(LogCorrelationToken.self, forKey: .pinnedToken)
+    }
 }
