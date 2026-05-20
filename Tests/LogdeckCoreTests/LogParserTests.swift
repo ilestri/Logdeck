@@ -18,6 +18,33 @@ final class LogParserTests: XCTestCase {
         XCTAssertEqual(entries.map(\.level), [.debug, .info, .warning, .error, .fault])
     }
 
+    func testDoesNotInferDebugFromTraceIdentifierFields() {
+        let sourceID = UUID()
+        let entries = LogParser.parse(
+            text: """
+            request completed trace_id=abc123
+            request completed trace-id=abc123
+            request completed trace.id=abc123
+            """,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entries.map(\.level), [.info, .info, .info])
+    }
+
+    func testInfersCriticalAndShortErrorLevels() {
+        let sourceID = UUID()
+        let entries = LogParser.parse(
+            text: """
+            CRITICAL database unavailable
+            ERR connection refused
+            """,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entries.map(\.level), [.fault, .error])
+    }
+
     func testParsesJSONLineFields() {
         let sourceID = UUID()
         let entry = LogParser.parseLine(

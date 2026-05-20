@@ -93,24 +93,40 @@ enum LogParser {
 
     private static func inferLevel(from rawText: String) -> LogLevel {
         let lowercased = rawText.lowercased()
+        let words = logWords(in: lowercased)
 
-        if lowercased.contains("fault") || lowercased.contains("fatal") || lowercased.contains("panic") {
+        if words.contains("fault") || words.contains("fatal") || words.contains("panic") ||
+            words.contains("critical") || words.contains("crit") ||
+            words.contains("emergency") || words.contains("emerg") || words.contains("alert") {
             return .fault
         }
 
-        if lowercased.contains("error") || lowercased.contains("exception") || lowercased.contains("failed") {
+        if words.contains("error") || words.contains("err") || words.contains("exception") || words.contains("failed") {
             return .error
         }
 
-        if lowercased.contains("warn") {
+        if words.contains("warning") || words.contains("warn") {
             return .warning
         }
 
-        if lowercased.contains("debug") || lowercased.contains("trace") {
+        if words.contains("debug") || words.contains("trace") {
             return .debug
         }
 
         return .info
+    }
+
+    private static func logWords(in rawText: String) -> Set<String> {
+        Set(
+            rawText
+                .split { character in
+                    character.isWhitespace || CharacterSet.logWordSeparators.contains(character)
+                }
+                .compactMap { word in
+                    let trimmed = String(word).trimmingCharacters(in: .logWordTrimCharacters)
+                    return trimmed.isEmpty ? nil : trimmed
+                }
+        )
     }
 
     private static func parseTimestampPrefix(_ rawText: String) -> Date? {
@@ -143,5 +159,14 @@ enum LogParser {
         formatter.timeZone = .current
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return formatter.date(from: value)
+    }
+}
+
+private extension CharacterSet {
+    static let logWordSeparators = CharacterSet(charactersIn: #"[](){}<>"'`,;:|=+*/\"#)
+    static let logWordTrimCharacters = CharacterSet(charactersIn: #".-_"#)
+
+    func contains(_ character: Character) -> Bool {
+        character.unicodeScalars.allSatisfy(contains)
     }
 }
