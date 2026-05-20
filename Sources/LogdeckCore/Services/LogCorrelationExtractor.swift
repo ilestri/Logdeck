@@ -135,7 +135,7 @@ enum LogCorrelationExtractor {
     }
 
     private static func clean(_ value: String) -> String? {
-        let trimmed = value.trimmingCharacters(in: CharacterSet(charactersIn: #""',;)]}"#))
+        let trimmed = value.trimmingCharacters(in: .correlationValueTrimCharacters)
         guard trimmed.range(of: #"^[A-Za-z0-9][A-Za-z0-9._:/-]{2,}$"#, options: .regularExpression) != nil else {
             return nil
         }
@@ -153,4 +153,9 @@ enum LogCorrelationExtractor {
         let range = NSRange(rawText.startIndex..<rawText.endIndex, in: rawText)
         return regex.firstMatch(in: rawText, range: range) != nil
     }
+}
+
+private extension CharacterSet {
+    static let correlationValueTrimCharacters = CharacterSet.whitespacesAndNewlines
+        .union(CharacterSet(charactersIn: #""',;)]}"#))
 }

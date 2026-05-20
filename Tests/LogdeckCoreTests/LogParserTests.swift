@@ -144,6 +144,23 @@ final class LogParserTests: XCTestCase {
         XCTAssertNotNil(entry.timestamp)
     }
 
+    func testParsesJSONTimestampValuesWithSurroundingWhitespace() {
+        let sourceID = UUID()
+        let isoEntry = LogParser.parseLine(
+            #"{"timestamp":" 2026-05-19T04:10:20Z ","level":"info","message":"ready"}"#,
+            lineNumber: 1,
+            sourceID: sourceID
+        )
+        let plainEntry = LogParser.parseLine(
+            #"{"timestamp":" 2026-05-19 04:10:20 ","level":"info","message":"ready"}"#,
+            lineNumber: 2,
+            sourceID: sourceID
+        )
+
+        XCTAssertNotNil(isoEntry.timestamp)
+        XCTAssertNotNil(plainEntry.timestamp)
+    }
+
     func testParsesJSONKeysCaseInsensitively() {
         let sourceID = UUID()
         let entry = LogParser.parseLine(

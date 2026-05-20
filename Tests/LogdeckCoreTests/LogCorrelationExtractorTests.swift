@@ -38,6 +38,15 @@ final class LogCorrelationExtractorTests: XCTestCase {
         XCTAssertEqual(tokens.map(\.value), ["REQ-123", "TRACE-7"])
     }
 
+    func testExtractsJSONCorrelationValuesWithSurroundingWhitespace() {
+        let tokens = LogCorrelationExtractor.tokens(
+            from: #"{"requestId":" REQ-123 ","trace_id":" TRACE-7\n"}"#
+        )
+
+        XCTAssertEqual(tokens.map(\.kind), [.requestID, .traceID])
+        XCTAssertEqual(tokens.map(\.value), ["REQ-123", "TRACE-7"])
+    }
+
     func testDoesNotExtractEmbeddedCorrelationKeys() {
         let tokens = LogCorrelationExtractor.tokens(
             from: #"not_request_id=REQ-123 mytrace_id=TRACE-1 unrelated-correlation_id=CORR-1"#
