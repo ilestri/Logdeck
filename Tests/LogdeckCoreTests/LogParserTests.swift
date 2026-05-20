@@ -45,6 +45,19 @@ final class LogParserTests: XCTestCase {
         XCTAssertEqual(entries.map(\.level), [.fault, .error])
     }
 
+    func testInfersLevelsWithTrailingSentencePunctuation() {
+        let sourceID = UUID()
+        let entries = LogParser.parse(
+            text: """
+            WARN! slow response
+            ERROR? disk offline
+            """,
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entries.map(\.level), [.warning, .error])
+    }
+
     func testParsesJSONLineFields() {
         let sourceID = UUID()
         let entry = LogParser.parseLine(
@@ -237,6 +250,18 @@ final class LogParserTests: XCTestCase {
         XCTAssertEqual(entries.map(\.lineNumber), [1, 2, 3])
         XCTAssertEqual(entries.map(\.message), ["INFO first", "", "ERROR third"])
         XCTAssertEqual(entries.map(\.level), [.info, .info, .error])
+    }
+
+    func testParsesCRLFLinesWithoutSyntheticBlankRows() {
+        let sourceID = UUID()
+        let entries = LogParser.parse(
+            text: "INFO first\r\nERROR second\r\nWARN third",
+            sourceID: sourceID
+        )
+
+        XCTAssertEqual(entries.map(\.lineNumber), [1, 2, 3])
+        XCTAssertEqual(entries.map(\.message), ["INFO first", "ERROR second", "WARN third"])
+        XCTAssertEqual(entries.map(\.level), [.info, .error, .warning])
     }
 
     func testParsesPlainTimestampPrefix() {
