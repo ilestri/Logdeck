@@ -4,7 +4,7 @@ import OSLog
 enum UnifiedLogReader {
     static let archiveExtension = "logarchive"
     static let sourceURL = URL(string: "logdeck://macos-unified-logs")!
-    static let sourceName = "macOS Unified Logs"
+    static let sourceName = "macOS 통합 로그"
 
     static func readLocal(query: UnifiedLogQuery = .defaultRecent) throws -> LogSource {
         guard query.limit > 0 else {
@@ -123,6 +123,6 @@ enum UnifiedLogReader {
             "category=\(record.category)"
         ].joined(separator: " ")
 
-        return "\(timestamp) \(record.level.label.uppercased()) \(metadata) \(record.message)"
+        return "\(timestamp) \(record.level.rawValue.uppercased()) \(metadata) \(record.message)"
     }
 }

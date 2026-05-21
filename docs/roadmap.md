@@ -1,35 +1,42 @@
-# Roadmap
+# 로드맵
 
-## 0.1 Local Viewer
+## 0.1 로컬 뷰어
 
-- SwiftUI app skeleton.
-- Multi-file open.
-- Search and level filters.
-- JSON line parsing.
-- Detail inspector.
-- Parser and filter tests.
+- SwiftUI 앱 골격.
+- 여러 파일 열기.
+- 검색과 심각도 필터.
+- JSON line 파싱.
+- 상세 검사기.
+- 파서와 필터 테스트.
 
-## 0.2 Tail and Scale
+## 0.2 실시간 추적과 확장성
 
-- Follow file changes. `Implemented: polling-based append reads for the selected source.`
-- Append new lines without reloading the full file.
-- Virtualized rendering for large files. `Implemented: native Table rendering backed by cached visible-entry snapshots.`
-- Error-neighborhood navigation. `Implemented: visible error/fault jumps plus selected-line context.`
+- 파일 변경 따라가기. `구현됨: 선택한 소스의 append 내용을 폴링으로 읽음.`
+- 전체 파일을 다시 읽지 않고 새 줄 추가.
+- 큰 파일 렌더링 최적화. `구현됨: 캐시된 visible-entry snapshot 기반 커스텀 로그 그리드.`
+- 오류 주변 이동. `구현됨: 보이는 오류/장애 이동과 선택 행 주변 로그.`
 
-## 0.3 Timeline
+## 0.3 타임라인
 
-- Merge multiple sources by timestamp. `Implemented: Source/Timeline segmented display with stable timestamp ordering.`
-- Request ID and trace ID pinning. `Implemented: selected-line token extraction and pinned filtering.`
-- Saved workspaces. `Implemented: versioned .logdeck JSON files for source paths and view state.`
+- 여러 소스를 timestamp 기준으로 합치기. `구현됨: 안정적인 timestamp 정렬을 가진 소스/타임라인 segmented 보기.`
+- 요청 ID와 추적 ID 고정. `구현됨: 선택 행 토큰 추출과 고정 필터.`
+- 저장된 작업공간. `구현됨: 소스 경로와 보기 상태를 담는 versioned .logdeck JSON 파일.`
 
-## 0.4 macOS Logs
+## 0.4 macOS 로그
 
-- Read local unified logs through `OSLogStore`. `Implemented: recent local unified log import as a non-file-backed source.`
-- Import `.logarchive` files. `Implemented: OSLogStore(url:) archive import with workspace path persistence.`
-- Add subsystem, process, category, and level filters. `Implemented: Unified metadata filter bar plus existing level toggles.`
+- `OSLogStore`로 로컬 통합 로그 읽기. `구현됨: 최근 로컬 통합 로그를 파일 없는 소스로 가져오기.`
+- `.logarchive` 파일 가져오기. `구현됨: OSLogStore(url:) 아카이브 가져오기와 작업공간 경로 보존.`
+- 서브시스템, 프로세스, 카테고리, 심각도 필터 추가. `구현됨: 통합 로그 메타데이터 필터 막대와 기존 심각도 토글.`
 
-## Repository
+## 0.5 작업공간 UX
 
-- Repository links. `Implemented: docs/github.md keeps the repository and clone URL in one place.`
-- Privacy posture. `Implemented: PRIVACY.md documents local-first data handling and diagnostics boundaries.`
-- Local app install. `Implemented: scripts/install_app.sh builds, signs, installs, and opens a local .app bundle.`
+- 지속 가능한 UI/UX 계약 수립. `구현됨: 루트 DESIGN.md가 로컬 우선 macOS 디자인 원칙, 구성 요소 상태, 검증 기대를 문서화함.`
+- 필터 상태를 보이고 되돌릴 수 있게 만들기. `구현됨: 활성 필터 요약, 잘못된 정규식 경고, 필터 지우기, 결과 없음 복구.`
+- 로그 이슈 확인 가독성 개선. `구현됨: 심각도 배지, 소스별 이슈 수, 선택 로그 검사기 헤더, 검사기 표시 토글.`
+- 한국어 사용자 경험 정리. `구현됨: 앱 화면 문구, 상태 메시지, 도움말, 디자인 문서, 로드맵을 한국어 기준으로 정리.`
+
+## 저장소
+
+- 저장소 링크. `구현됨: docs/github.md가 저장소와 clone URL을 한곳에 둠.`
+- 개인정보 보호 태도. `구현됨: PRIVACY.md가 로컬 우선 데이터 처리와 진단 경계를 문서화함.`
+- 로컬 앱 설치. `구현됨: scripts/install_app.sh가 로컬 .app bundle을 빌드, 서명, 설치, 실행함.`

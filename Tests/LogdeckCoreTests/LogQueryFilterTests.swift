@@ -36,6 +36,8 @@ final class LogQueryFilterTests: XCTestCase {
         let filter = LogQueryFilter(query: #"/[/"#, enabledLevels: [.info])
 
         XCTAssertTrue(filter.apply(to: entries).isEmpty)
+        XCTAssertEqual(filter.validationMessage, "정규식이 올바르지 않습니다.")
+        XCTAssertEqual(LogQueryFilter.validationMessage(for: #"/[/"#), "정규식이 올바르지 않습니다.")
     }
 
     func testEmptySlashDelimitedQueryFallsBackToTextSearch() {
@@ -47,5 +49,6 @@ final class LogQueryFilterTests: XCTestCase {
         let filter = LogQueryFilter(query: #"//"#, enabledLevels: [.info])
 
         XCTAssertEqual(filter.apply(to: entries).map(\.lineNumber), [1])
+        XCTAssertNil(filter.validationMessage)
     }
 }

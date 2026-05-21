@@ -12,6 +12,8 @@ APP_DIR="$DIST_DIR/$APP_NAME.app"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
 RESOURCES_DIR="$CONTENTS_DIR/Resources"
+ICON_NAME="${ICON_NAME:-Logdeck}"
+ICON_SOURCE="${ICON_SOURCE:-"$ROOT_DIR/Resources/$ICON_NAME.icns"}"
 OPEN_APP="${OPEN_APP:-1}"
 
 if [[ -z "${INSTALL_DIR:-}" ]]; then
@@ -37,20 +39,31 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 cp "$BINARY_PATH" "$MACOS_DIR/$APP_NAME"
 chmod 755 "$MACOS_DIR/$APP_NAME"
 
+if [[ ! -f "$ICON_SOURCE" ]]; then
+  echo "Missing app icon: $ICON_SOURCE" >&2
+  exit 1
+fi
+
+cp "$ICON_SOURCE" "$RESOURCES_DIR/$ICON_NAME.icns"
+
 cat > "$CONTENTS_DIR/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
   <key>CFBundleDevelopmentRegion</key>
-  <string>en</string>
+  <string>ko</string>
   <key>CFBundleDisplayName</key>
   <string>$APP_NAME</string>
+  <key>CFBundleLocalizations</key>
+  <array>
+    <string>ko</string>
+  </array>
   <key>CFBundleDocumentTypes</key>
   <array>
     <dict>
       <key>CFBundleTypeName</key>
-      <string>Log files</string>
+      <string>로그 파일</string>
       <key>CFBundleTypeRole</key>
       <string>Viewer</string>
       <key>CFBundleTypeExtensions</key>
@@ -72,7 +85,7 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
     </dict>
     <dict>
       <key>CFBundleTypeName</key>
-      <string>macOS log archives</string>
+      <string>macOS 로그 아카이브</string>
       <key>CFBundleTypeRole</key>
       <string>Viewer</string>
       <key>CFBundleTypeExtensions</key>
@@ -89,6 +102,8 @@ cat > "$CONTENTS_DIR/Info.plist" <<PLIST
   <string>$APP_NAME</string>
   <key>CFBundleIdentifier</key>
   <string>$BUNDLE_ID</string>
+  <key>CFBundleIconFile</key>
+  <string>$ICON_NAME</string>
   <key>CFBundleInfoDictionaryVersion</key>
   <string>6.0</string>
   <key>CFBundleName</key>

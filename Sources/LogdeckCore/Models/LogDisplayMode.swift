@@ -7,9 +7,9 @@ enum LogDisplayMode: String, CaseIterable, Codable, Hashable, Sendable {
     var label: String {
         switch self {
         case .source:
-            return "Source"
+            return "소스"
         case .timeline:
-            return "Timeline"
+            return "타임라인"
         }
     }
 }

@@ -27,15 +27,15 @@ enum LogLevel: String, CaseIterable, Codable, Hashable, Sendable {
     var label: String {
         switch self {
         case .debug:
-            return "Debug"
+            return "디버그"
         case .info:
-            return "Info"
+            return "정보"
         case .warning:
-            return "Warning"
+            return "경고"
         case .error:
-            return "Error"
+            return "오류"
         case .fault:
-            return "Fault"
+            return "장애"
         }
     }
 

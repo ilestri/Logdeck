@@ -32,7 +32,7 @@ final class LogTailReaderTests: XCTestCase {
 
         XCTAssertTrue(first.entries.isEmpty)
         XCTAssertEqual(second.entries.first?.lineNumber, 2)
-        XCTAssertEqual(second.entries.first?.message, "ERROR failed")
+        XCTAssertEqual(second.entries.first?.message, "failed")
         XCTAssertEqual(second.pendingText, "")
     }
 
@@ -52,7 +52,7 @@ final class LogTailReaderTests: XCTestCase {
         XCTAssertTrue(first.entries.isEmpty)
         XCTAssertEqual(first.pendingText, "ERROR failed\r")
         XCTAssertEqual(second.entries.map(\.lineNumber), [2, 3])
-        XCTAssertEqual(second.entries.map(\.message), ["ERROR failed", "WARN recovered"])
+        XCTAssertEqual(second.entries.map(\.message), ["failed", "recovered"])
         XCTAssertEqual(second.pendingText, "")
     }
 
@@ -81,7 +81,7 @@ final class LogTailReaderTests: XCTestCase {
 
         XCTAssertTrue(result.didReset)
         XCTAssertEqual(result.entries.map(\.lineNumber), [1])
-        XCTAssertEqual(result.entries.map(\.message), ["WARN reset"])
+        XCTAssertEqual(result.entries.map(\.message), ["reset"])
         XCTAssertEqual(result.pendingText, "")
     }
 
@@ -100,7 +100,7 @@ final class LogTailReaderTests: XCTestCase {
 
         XCTAssertTrue(reset.didReset)
         XCTAssertEqual(reset.entries.map(\.lineNumber), [1])
-        XCTAssertEqual(reset.entries.map(\.message), ["WARN restarted"])
+        XCTAssertEqual(reset.entries.map(\.message), ["restarted"])
         XCTAssertEqual(reset.pendingText, "")
     }
 

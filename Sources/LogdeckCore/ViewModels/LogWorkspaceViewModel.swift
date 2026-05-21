@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 final class LogWorkspaceViewModel: ObservableObject {
     private static let contextRadius = 3
+    private static let allLevels = Set(LogLevel.allCases)
     private let diagnosticReporter: DiagnosticReporter
 
     @Published var sources: [LogSource] = [] {
@@ -75,7 +76,7 @@ final class LogWorkspaceViewModel: ObservableObject {
             tailEnabled ? startTail() : stopTail()
         }
     }
-    @Published var statusMessage = "Open a log file to begin."
+    @Published var statusMessage = "로그 파일을 열어 시작하세요."
     @Published private(set) var visibleEntries: [LogEntry] = []
 
     private var tailTask: Task<Void, Never>?
@@ -146,17 +147,17 @@ final class LogWorkspaceViewModel: ObservableObject {
     var issueStatusLabel: String {
         let issues = visibleIssueEntries
         guard !issues.isEmpty else {
-            return "No issues"
+            return "이슈 없음"
         }
 
         guard
             let selectedEntry,
             let issueIndex = issues.firstIndex(where: { $0.id == selectedEntry.id })
         else {
-            return "\(issues.count) issues"
+            return "\(issues.count)개 이슈"
         }
 
-        return "\(issueIndex + 1) / \(issues.count) issues"
+        return "이슈 \(issueIndex + 1) / \(issues.count)"
     }
 
     var totalEntryCount: Int {
@@ -166,6 +167,29 @@ final class LogWorkspaceViewModel: ObservableObject {
         case .timeline:
             return sources.reduce(0) { $0 + $1.entries.count }
         }
+    }
+
+    var issueCount: Int {
+        visibleIssueEntries.count
+    }
+
+    var queryWarning: String? {
+        LogQueryFilter.validationMessage(for: query)
+    }
+
+    var hasActiveFilters: Bool {
+        isQueryActive
+            || enabledLevels != Self.allLevels
+            || metadataFilters.isActive
+            || pinnedToken != nil
+    }
+
+    var filterSummary: String {
+        guard hasActiveFilters else {
+            return "전체 \(totalEntryCount)줄"
+        }
+
+        return "\(visibleEntries.count) / \(totalEntryCount)줄 표시 중"
     }
 
     var showsMetadataFilters: Bool {
@@ -181,7 +205,7 @@ final class LogWorkspaceViewModel: ObservableObject {
     }
 
     func importRecentUnifiedLogs() {
-        statusMessage = "Loading recent macOS logs..."
+        statusMessage = "최근 macOS 로그를 불러오는 중..."
 
         Task {
             do {
@@ -194,12 +218,12 @@ final class LogWorkspaceViewModel: ObservableObject {
                 displayMode = .source
                 rebuildVisibleEntries(resetSelectionIfNeeded: true)
                 updateStatus(
-                    "Loaded \(source.entries.count) recent macOS log entries.",
+                    "최근 macOS 로그 \(source.entries.count)개를 불러왔습니다.",
                     category: "unified-log"
                 )
             } catch {
                 updateStatus(
-                    "Failed to read macOS logs: \(error.localizedDescription)",
+                    "macOS 로그를 읽지 못했습니다: \(error.localizedDescription)",
                     severity: .error,
                     category: "unified-log"
                 )
@@ -208,7 +232,7 @@ final class LogWorkspaceViewModel: ObservableObject {
     }
 
     func openLogArchive(_ url: URL) {
-        statusMessage = "Loading \(url.lastPathComponent)..."
+        statusMessage = "\(url.lastPathComponent)을(를) 불러오는 중..."
 
         Task {
             do {
@@ -228,12 +252,12 @@ final class LogWorkspaceViewModel: ObservableObject {
                 displayMode = .source
                 rebuildVisibleEntries(resetSelectionIfNeeded: true)
                 updateStatus(
-                    "Loaded \(source.entries.count) entries from \(source.name).",
+                    "\(source.name)에서 \(source.entries.count)개 항목을 불러왔습니다.",
                     category: "log-archive"
                 )
             } catch {
                 updateStatus(
-                    "Failed to open \(url.lastPathComponent): \(error.localizedDescription)",
+                    "\(url.lastPathComponent)을(를) 열지 못했습니다: \(error.localizedDescription)",
                     severity: .error,
                     category: "log-archive"
                 )
@@ -244,7 +268,7 @@ final class LogWorkspaceViewModel: ObservableObject {
     func saveWorkspace(to url: URL) {
         guard canSaveWorkspace else {
             updateStatus(
-                "Open file-backed log sources before saving a workspace.",
+                "작업공간을 저장하려면 파일 기반 로그 소스를 먼저 열어야 합니다.",
                 severity: .warning,
                 category: "workspace"
             )
@@ -260,10 +284,10 @@ final class LogWorkspaceViewModel: ObservableObject {
 
         do {
             try LogWorkspaceStore.write(workspaceSnapshot(), to: url)
-            updateStatus("Saved workspace \(url.lastPathComponent).", category: "workspace")
+            updateStatus("작업공간 \(url.lastPathComponent)을(를) 저장했습니다.", category: "workspace")
         } catch {
             updateStatus(
-                "Failed to save workspace: \(error.localizedDescription)",
+                "작업공간을 저장하지 못했습니다: \(error.localizedDescription)",
                 severity: .error,
                 category: "workspace"
             )
@@ -271,7 +295,7 @@ final class LogWorkspaceViewModel: ObservableObject {
     }
 
     func openWorkspace(_ url: URL) {
-        statusMessage = "Opening workspace \(url.lastPathComponent)..."
+        statusMessage = "작업공간 \(url.lastPathComponent)을(를) 여는 중..."
 
         Task {
             do {
@@ -293,25 +317,25 @@ final class LogWorkspaceViewModel: ObservableObject {
                 restoreWorkspace(result.document, sources: result.sources.loaded)
                 if result.sources.loaded.isEmpty, !result.document.sourcePaths.isEmpty {
                     updateStatus(
-                        "Workspace opened, but no log files could be loaded.",
+                        "작업공간은 열렸지만 불러올 수 있는 로그 파일이 없습니다.",
                         severity: .warning,
                         category: "workspace"
                     )
                 } else if result.sources.failedPaths.isEmpty {
                     updateStatus(
-                        "Restored \(result.sources.loaded.count) sources from \(url.lastPathComponent).",
+                        "\(url.lastPathComponent)에서 소스 \(result.sources.loaded.count)개를 복원했습니다.",
                         category: "workspace"
                     )
                 } else {
                     updateStatus(
-                        "Restored \(result.sources.loaded.count) sources; skipped \(result.sources.failedPaths.count) unavailable files.",
+                        "소스 \(result.sources.loaded.count)개를 복원했고, 사용할 수 없는 파일 \(result.sources.failedPaths.count)개는 건너뛰었습니다.",
                         severity: .warning,
                         category: "workspace"
                     )
                 }
             } catch {
                 updateStatus(
-                    "Failed to open workspace: \(error.localizedDescription)",
+                    "작업공간을 열지 못했습니다: \(error.localizedDescription)",
                     severity: .error,
                     category: "workspace"
                 )
@@ -325,7 +349,7 @@ final class LogWorkspaceViewModel: ObservableObject {
             return
         }
 
-        statusMessage = "Loading \(url.lastPathComponent)..."
+        statusMessage = "\(url.lastPathComponent)을(를) 불러오는 중..."
 
         Task {
             do {
@@ -337,15 +361,15 @@ final class LogWorkspaceViewModel: ObservableObject {
                 selectedSourceID = source.id
                 rebuildVisibleEntries(resetSelectionIfNeeded: true)
 
-                let truncationNote = source.isTruncated ? " Loaded last 20 MB." : ""
+                let truncationNote = source.isTruncated ? " 마지막 20MB만 불러왔습니다." : ""
                 updateStatus(
-                    "Loaded \(source.entries.count) lines from \(source.name).\(truncationNote)",
+                    "\(source.name)에서 \(source.entries.count)줄을 불러왔습니다.\(truncationNote)",
                     category: "file"
                 )
                 restartTailIfNeeded()
             } catch {
                 updateStatus(
-                    "Failed to open \(url.lastPathComponent): \(error.localizedDescription)",
+                    "\(url.lastPathComponent)을(를) 열지 못했습니다: \(error.localizedDescription)",
                     severity: .error,
                     category: "file"
                 )
@@ -357,6 +381,31 @@ final class LogWorkspaceViewModel: ObservableObject {
         selectedSourceID = source.id
         displayMode = .source
         restartTailIfNeeded()
+    }
+
+    func removeSource(_ source: LogSource) {
+        guard let removedIndex = sources.firstIndex(where: { $0.id == source.id }) else {
+            return
+        }
+
+        let removedSource = sources[removedIndex]
+        let removedWasSelected = selectedSource?.id == removedSource.id
+        let remainingSources = sources.filter { $0.id != removedSource.id }
+        let nextSelectedSourceID = nextSourceIDAfterRemoval(
+            removedIndex: removedIndex,
+            removedWasSelected: removedWasSelected,
+            remainingSources: remainingSources
+        )
+
+        if removedWasSelected, tailEnabled {
+            tailEnabled = false
+        }
+
+        tailPendingText[removedSource.id] = nil
+        sources = remainingSources
+        selectedSourceID = nextSelectedSourceID
+        rebuildVisibleEntries(resetSelectionIfNeeded: true)
+        updateStatus("\(removedSource.name)을(를) 소스에서 닫았습니다.", category: "source")
     }
 
     func toggleLevel(_ level: LogLevel) {
@@ -371,6 +420,16 @@ final class LogWorkspaceViewModel: ObservableObject {
         }
     }
 
+    func showAllLevels() {
+        enabledLevels = Self.allLevels
+        statusMessage = "모든 심각도를 표시합니다."
+    }
+
+    func showIssueLevelsOnly() {
+        enabledLevels = [.error, .fault]
+        statusMessage = "오류와 장애만 표시합니다."
+    }
+
     func selectPreviousIssue() {
         selectIssue(forward: false)
     }
@@ -379,13 +438,21 @@ final class LogWorkspaceViewModel: ObservableObject {
         selectIssue(forward: true)
     }
 
+    func selectPreviousVisibleEntry() {
+        selectVisibleEntry(forward: false)
+    }
+
+    func selectNextVisibleEntry() {
+        selectVisibleEntry(forward: true)
+    }
+
     func sourceName(for entry: LogEntry) -> String {
-        source(for: entry.sourceID)?.name ?? "Unknown"
+        source(for: entry.sourceID)?.name ?? "알 수 없음"
     }
 
     func pin(_ token: LogCorrelationToken) {
         pinnedToken = token
-        statusMessage = "Pinned \(token.label)."
+        statusMessage = "\(token.label)을(를) 고정했습니다."
     }
 
     func clearPinnedToken() {
@@ -394,12 +461,30 @@ final class LogWorkspaceViewModel: ObservableObject {
         }
 
         self.pinnedToken = nil
-        statusMessage = "Cleared \(pinnedToken.label)."
+        statusMessage = "\(pinnedToken.label) 고정을 해제했습니다."
     }
 
     func clearMetadataFilters() {
         metadataFilters = .empty
-        statusMessage = "Cleared metadata filters."
+        statusMessage = "메타데이터 필터를 지웠습니다."
+    }
+
+    func clearAllFilters() {
+        query = ""
+        enabledLevels = Self.allLevels
+        metadataFilters = .empty
+        pinnedToken = nil
+        statusMessage = "모든 필터를 지웠습니다."
+    }
+
+    func levelCountsForCurrentMode() -> [LogLevel: Int] {
+        entriesForCurrentMode().reduce(into: [:]) { counts, entry in
+            counts[entry.level, default: 0] += 1
+        }
+    }
+
+    func issueCount(for source: LogSource) -> Int {
+        source.entries.filter(\.level.isIssueLevel).count
     }
 
     func makeDiagnosticReport() -> DiagnosticReport {
@@ -416,10 +501,10 @@ final class LogWorkspaceViewModel: ObservableObject {
 
         do {
             try diagnosticReporter.write(makeDiagnosticReport(), to: url)
-            updateStatus("Saved diagnostics \(url.lastPathComponent).", category: "diagnostics")
+            updateStatus("진단 파일 \(url.lastPathComponent)을(를) 저장했습니다.", category: "diagnostics")
         } catch {
             updateStatus(
-                "Failed to save diagnostics: \(error.localizedDescription)",
+                "진단 파일을 저장하지 못했습니다: \(error.localizedDescription)",
                 severity: .error,
                 category: "diagnostics"
             )
@@ -466,7 +551,7 @@ final class LogWorkspaceViewModel: ObservableObject {
         let issues = visibleIssueEntries
         guard let target = issueTarget(in: issues, forward: forward) else {
             updateStatus(
-                "No visible error or fault entries.",
+                "현재 보이는 오류 또는 장애 항목이 없습니다.",
                 severity: .warning,
                 category: "navigation"
             )
@@ -474,7 +559,7 @@ final class LogWorkspaceViewModel: ObservableObject {
         }
 
         selectedEntryID = target.id
-        statusMessage = "Selected \(target.level.label.lowercased()) at line \(target.lineNumber)."
+        statusMessage = "\(target.lineNumber)번째 줄의 \(target.level.label) 항목을 선택했습니다."
     }
 
     private func issueTarget(in issues: [LogEntry], forward: Bool) -> LogEntry? {
@@ -507,6 +592,50 @@ final class LogWorkspaceViewModel: ObservableObject {
         return forward ? issues.first : issues.last
     }
 
+    private func selectVisibleEntry(forward: Bool) {
+        guard !visibleEntries.isEmpty else {
+            return
+        }
+
+        guard let selectedEntry,
+              let selectedIndex = visibleEntries.firstIndex(where: { $0.id == selectedEntry.id })
+        else {
+            selectedEntryID = forward ? visibleEntries.first?.id : visibleEntries.last?.id
+            return
+        }
+
+        let nextIndex: Int
+        if forward {
+            nextIndex = selectedIndex == visibleEntries.count - 1 ? 0 : selectedIndex + 1
+        } else {
+            nextIndex = selectedIndex == 0 ? visibleEntries.count - 1 : selectedIndex - 1
+        }
+
+        selectedEntryID = visibleEntries[nextIndex].id
+    }
+
+    private func nextSourceIDAfterRemoval(
+        removedIndex: Int,
+        removedWasSelected: Bool,
+        remainingSources: [LogSource]
+    ) -> LogSource.ID? {
+        guard !remainingSources.isEmpty else {
+            return nil
+        }
+
+        if !removedWasSelected,
+           let selectedSourceID,
+           remainingSources.contains(where: { $0.id == selectedSourceID }) {
+            return selectedSourceID
+        }
+
+        if removedIndex < remainingSources.count {
+            return remainingSources[removedIndex].id
+        }
+
+        return remainingSources.last?.id
+    }
+
     private func rebuildVisibleEntries(resetSelectionIfNeeded: Bool = false) {
         guard !sources.isEmpty else {
             visibleEntries = []
@@ -533,7 +662,23 @@ final class LogWorkspaceViewModel: ObservableObject {
             return
         }
 
-        selectedEntryID = visibleEntries.first?.id
+        let nextSelectionID = visibleEntries.first?.id
+        Task { @MainActor [weak self] in
+            guard let self else {
+                return
+            }
+
+            if let selectedEntryID,
+               self.visibleEntries.contains(where: { $0.id == selectedEntryID }) {
+                return
+            }
+
+            guard nextSelectionID == nil || self.visibleEntries.contains(where: { $0.id == nextSelectionID }) else {
+                return
+            }
+
+            self.selectedEntryID = nextSelectionID
+        }
     }
 
     private func applyPinnedToken(to entries: [LogEntry]) -> [LogEntry] {
@@ -591,10 +736,14 @@ final class LogWorkspaceViewModel: ObservableObject {
         sources.first { $0.id == sourceID }
     }
 
+    private var isQueryActive: Bool {
+        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
     private func startTail() {
         guard let selectedSource else {
             updateStatus(
-                "Open a log file before enabling tail mode.",
+                "실시간 추적을 켜려면 로그 파일을 먼저 열어야 합니다.",
                 severity: .warning,
                 category: "tail"
             )
@@ -604,7 +753,7 @@ final class LogWorkspaceViewModel: ObservableObject {
 
         guard selectedSource.supportsTail else {
             updateStatus(
-                "Tail mode only supports file-backed log sources.",
+                "실시간 추적은 파일 기반 로그 소스에서만 사용할 수 있습니다.",
                 severity: .warning,
                 category: "tail"
             )
@@ -613,7 +762,7 @@ final class LogWorkspaceViewModel: ObservableObject {
         }
 
         tailTask?.cancel()
-        statusMessage = "Tail mode enabled."
+        statusMessage = "실시간 추적을 켰습니다."
         tailTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.readTailOnce()
@@ -630,7 +779,7 @@ final class LogWorkspaceViewModel: ObservableObject {
     private func stopTail() {
         tailTask?.cancel()
         tailTask = nil
-        statusMessage = selectedSource.map { "Tail mode disabled for \($0.name)." } ?? "Tail mode disabled."
+        statusMessage = selectedSource.map { "\($0.name)의 실시간 추적을 껐습니다." } ?? "실시간 추적을 껐습니다."
     }
 
     private func restartTailIfNeeded() {
@@ -657,7 +806,7 @@ final class LogWorkspaceViewModel: ObservableObject {
             applyTailResult(result, to: sourceID)
         } catch {
             updateStatus(
-                "Tail read failed for \(source.name): \(error.localizedDescription)",
+                "\(source.name)의 추가 로그를 읽지 못했습니다: \(error.localizedDescription)",
                 severity: .error,
                 category: "tail"
             )
@@ -678,7 +827,7 @@ final class LogWorkspaceViewModel: ObservableObject {
             selectedEntryID = result.entries.last?.id
             rebuildVisibleEntries()
             updateStatus(
-                "Tail detected file reset and reloaded \(result.entries.count) lines.",
+                "파일이 다시 생성되어 \(result.entries.count)줄을 다시 불러왔습니다.",
                 severity: .warning,
                 category: "tail"
             )
@@ -692,7 +841,7 @@ final class LogWorkspaceViewModel: ObservableObject {
         sources[index].entries.append(contentsOf: result.entries)
         selectedEntryID = result.entries.last?.id
         rebuildVisibleEntries()
-        statusMessage = "Tail appended \(result.entries.count) lines to \(sources[index].name)."
+        statusMessage = "\(sources[index].name)에 새 로그 \(result.entries.count)줄을 추가했습니다."
     }
 
     private func updateStatus(

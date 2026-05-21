@@ -30,10 +30,14 @@ enum LogParser {
         sourceID: UUID,
         timestampParser: TimestampParser
     ) -> LogEntry {
-        let fields = parseJSONFields(from: rawText, timestampParser: timestampParser)
-        let level = fields.level ?? inferLevel(from: rawText)
-        let message = fields.message ?? rawText
-        let timestamp = fields.timestamp ?? parseTimestampPrefix(rawText, timestampParser: timestampParser)
+        let jsonFields = parseJSONFields(from: rawText, timestampParser: timestampParser)
+        let leadingFields = parseLeadingMetadataFields(from: rawText, timestampParser: timestampParser)
+        let level = jsonFields.level ?? inferLevel(from: rawText)
+        let timestamp = jsonFields.timestamp ?? parseTimestampPrefix(rawText, timestampParser: timestampParser)
+        let message = jsonFields.message ?? displayMessage(
+            from: rawText,
+            timestampParser: timestampParser
+        )
 
         return LogEntry(
             sourceID: sourceID,
@@ -42,12 +46,313 @@ enum LogParser {
             level: level,
             message: message,
             rawText: rawText,
-            subsystem: fields.subsystem,
-            category: fields.category,
-            process: fields.process,
-            sender: fields.sender
+            subsystem: jsonFields.subsystem ?? leadingFields.subsystem,
+            category: jsonFields.category ?? leadingFields.category,
+            process: jsonFields.process ?? leadingFields.process,
+            sender: jsonFields.sender ?? leadingFields.sender
         )
     }
+
+    private static func parseLeadingMetadataFields(
+        from rawText: String,
+        timestampParser: TimestampParser
+    ) -> ParsedJSONFields {
+        var remainder = rawText[...].trimmingPrefix(while: \.isWhitespace)
+
+        if let withoutTimestamp = droppingLeadingTimestamp(from: remainder, timestampParser: timestampParser) {
+            remainder = withoutTimestamp.trimmingPrefix(while: \.isWhitespace)
+        }
+
+        if let withoutLevel = droppingLeadingLevel(from: remainder) {
+            remainder = withoutLevel.trimmingPrefix(while: \.isWhitespace)
+        }
+
+        var values: [String: String] = [:]
+        while let field = leadingMetadataField(in: remainder) {
+            let normalizedKey = normalizedMetadataKey(field.key)
+            if values[normalizedKey] == nil {
+                values[normalizedKey] = field.value
+            }
+            remainder = field.remainder.trimmingPrefix(while: \.isWhitespace)
+        }
+
+        guard !values.isEmpty else {
+            return .empty
+        }
+
+        return ParsedJSONFields(
+            subsystem: firstValue(in: values, keys: ["subsystem", "log_subsystem"]),
+            category: firstValue(in: values, keys: ["category", "log_category"]),
+            process: firstValue(in: values, keys: ["process", "process_name", "service", "service_name"]),
+            sender: firstValue(in: values, keys: ["sender", "logger", "logger_name", "class", "module", "component"])
+        )
+    }
+
+    private static func displayMessage(from rawText: String, timestampParser: TimestampParser) -> String {
+        var remainder = rawText[...].trimmingPrefix(while: \.isWhitespace)
+
+        if let withoutTimestamp = droppingLeadingTimestamp(from: remainder, timestampParser: timestampParser) {
+            remainder = withoutTimestamp.trimmingPrefix(while: \.isWhitespace)
+        }
+
+        if let withoutLevel = droppingLeadingLevel(from: remainder) {
+            remainder = withoutLevel.trimmingPrefix(while: \.isWhitespace)
+        }
+
+        if let withoutMetadata = droppingLeadingMetadataFields(from: remainder) {
+            remainder = withoutMetadata.trimmingPrefix(while: \.isWhitespace)
+        }
+
+        let message = String(remainder).trimmingCharacters(in: .whitespacesAndNewlines)
+        return message.isEmpty ? rawText : message
+    }
+
+    private static func droppingLeadingTimestamp(
+        from text: Substring,
+        timestampParser: TimestampParser
+    ) -> Substring? {
+        if let first = text.first, first == "[" || first == "(" {
+            let body = text.dropFirst()
+            let closing: Character = first == "[" ? "]" : ")"
+            guard let closingIndex = body.firstIndex(of: closing) else {
+                return nil
+            }
+
+            let wrappedCandidate = String(body[..<closingIndex])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let remainderStart = body.index(after: closingIndex)
+            let remainder = body[remainderStart...]
+
+            if !wrappedCandidate.isEmpty, timestampParser.parse(wrappedCandidate) != nil {
+                return remainder
+            }
+
+            if let afterBracketTimestamp = droppingLeadingTimestamp(
+                from: remainder.trimmingPrefix(while: \.isWhitespace),
+                timestampParser: timestampParser
+            ) {
+                return afterBracketTimestamp
+            }
+
+            return nil
+        }
+
+        if let whitespaceIndex = text.firstIndex(where: \.isWhitespace) {
+            let token = String(text[..<whitespaceIndex])
+            if token.contains(":"), timestampParser.parse(token) != nil {
+                return text[text.index(after: whitespaceIndex)...]
+            }
+        } else if timestampParser.parse(String(text)) != nil {
+            return text[text.endIndex...]
+        }
+
+        if text.count >= 23 {
+            let endIndex = text.index(text.startIndex, offsetBy: 23)
+            let candidate = String(text[..<endIndex])
+            if candidate.count > 19,
+               [".", ",", ":"].contains(String(candidate[candidate.index(candidate.startIndex, offsetBy: 19)])),
+               timestampParser.parse(candidate) != nil {
+                return text[endIndex...]
+            }
+        }
+
+        if text.count >= 19 {
+            let endIndex = text.index(text.startIndex, offsetBy: 19)
+            let candidate = String(text[..<endIndex])
+            if timestampParser.parse(candidate) != nil {
+                return text[endIndex...]
+            }
+        }
+
+        for length in [23] {
+            guard text.count >= length else {
+                continue
+            }
+
+            let endIndex = text.index(text.startIndex, offsetBy: length)
+            let candidate = String(text[..<endIndex])
+            if timestampParser.parse(candidate) != nil {
+                return text[endIndex...]
+            }
+        }
+
+        return nil
+    }
+
+    private static func droppingLeadingLevel(from text: Substring) -> Substring? {
+        let trimmed = text.trimmingPrefix(while: \.isWhitespace)
+        guard !trimmed.isEmpty else {
+            return nil
+        }
+
+        if trimmed.first == "[" {
+            let body = trimmed.dropFirst()
+            if let closingIndex = body.firstIndex(of: "]") {
+                let token = String(body[..<closingIndex])
+                if token.contains(where: \.isLetter), LogLevel(logValue: token) != nil {
+                    return body[body.index(after: closingIndex)...].droppingLeadingLevelSeparator()
+                }
+            }
+        }
+
+        guard let tokenEnd = trimmed.firstIndex(where: { !$0.isLetter && !$0.isNumber }) else {
+            return nil
+        }
+
+        let token = String(trimmed[..<tokenEnd])
+        guard LogLevel(logValue: token) != nil else {
+            return nil
+        }
+
+        return trimmed[tokenEnd...].droppingLeadingLevelSeparator()
+    }
+
+    private static func droppingLeadingMetadataFields(from text: Substring) -> Substring? {
+        var remainder = text.trimmingPrefix(while: \.isWhitespace)
+        var didDrop = false
+
+        while let field = leadingMetadataField(in: remainder) {
+            didDrop = true
+            remainder = field.remainder.trimmingPrefix(while: \.isWhitespace)
+        }
+
+        guard didDrop, !remainder.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return nil
+        }
+
+        return remainder
+    }
+
+    private static func leadingMetadataField(in text: Substring) -> LeadingMetadataField? {
+        let trimmed = text.trimmingPrefix(while: \.isWhitespace)
+        guard let delimiterIndex = trimmed.firstIndex(where: { $0 == "=" || $0 == ":" }) else {
+            return nil
+        }
+
+        let key = String(trimmed[..<delimiterIndex])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard isLeadingMetadataKey(key) else {
+            return nil
+        }
+
+        var valueStart = trimmed.index(after: delimiterIndex)
+        while valueStart < trimmed.endIndex, trimmed[valueStart].isWhitespace {
+            valueStart = trimmed.index(after: valueStart)
+        }
+
+        guard valueStart < trimmed.endIndex else {
+            return nil
+        }
+
+        let valueEnd = metadataValueEnd(in: trimmed, from: valueStart)
+        guard valueEnd > valueStart else {
+            return nil
+        }
+
+        let value = unquotedMetadataValue(
+            String(trimmed[valueStart..<valueEnd])
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+        )
+        guard !value.isEmpty else {
+            return nil
+        }
+
+        var remainderStart = valueEnd
+        while remainderStart < trimmed.endIndex,
+              trimmed[remainderStart] == "," || trimmed[remainderStart] == ";" {
+            remainderStart = trimmed.index(after: remainderStart)
+        }
+
+        return LeadingMetadataField(key: key, value: value, remainder: trimmed[remainderStart...])
+    }
+
+    private static func metadataValueEnd(in text: Substring, from valueStart: Substring.Index) -> Substring.Index {
+        let quoteCharacters: Set<Character> = ["\"", "'"]
+        if quoteCharacters.contains(text[valueStart]) {
+            let quote = text[valueStart]
+            var index = text.index(after: valueStart)
+            while index < text.endIndex {
+                if text[index] == quote {
+                    return text.index(after: index)
+                }
+                index = text.index(after: index)
+            }
+            return text.endIndex
+        }
+
+        return text[valueStart...].firstIndex(where: \.isWhitespace) ?? text.endIndex
+    }
+
+    private static func isLeadingMetadataKey(_ key: String) -> Bool {
+        leadingMetadataKeys.contains(normalizedMetadataKey(key))
+    }
+
+    private static func normalizedMetadataKey(_ key: String) -> String {
+        key.lowercased()
+            .replacingOccurrences(of: ".", with: "_")
+            .replacingOccurrences(of: "-", with: "_")
+    }
+
+    private static func firstValue(in values: [String: String], keys: [String]) -> String? {
+        for key in keys {
+            if let value = values[key], !value.isEmpty {
+                return value
+            }
+        }
+
+        return nil
+    }
+
+    private static func unquotedMetadataValue(_ value: String) -> String {
+        guard value.count >= 2,
+              let first = value.first,
+              let last = value.last,
+              (first == "\"" && last == "\"") || (first == "'" && last == "'")
+        else {
+            return value
+        }
+
+        return String(value.dropFirst().dropLast())
+    }
+
+    private static let leadingMetadataKeys: Set<String> = [
+        "category",
+        "class",
+        "component",
+        "correlation_id",
+        "corr_id",
+        "host",
+        "hostname",
+        "logger",
+        "logger_name",
+        "log_category",
+        "log_subsystem",
+        "method",
+        "module",
+        "pid",
+        "process",
+        "process_name",
+        "req_id",
+        "request_id",
+        "sender",
+        "service",
+        "service_name",
+        "session_id",
+        "sid",
+        "span_id",
+        "subsystem",
+        "thread",
+        "thread_id",
+        "tid",
+        "trace_id",
+        "traceid",
+        "transaction_id",
+        "tx_id",
+        "txn_id",
+        "user",
+        "username",
+        "x_request_id"
+    ]
 
     private static func parseJSONFields(from rawText: String, timestampParser: TimestampParser) -> ParsedJSONFields {
         guard rawText.first == "{" || rawText.first?.isWhitespace == true else {
@@ -770,5 +1075,23 @@ private struct ParsedJSONFields: Sendable {
         self.category = category
         self.process = process
         self.sender = sender
+    }
+}
+
+private struct LeadingMetadataField {
+    let key: String
+    let value: String
+    let remainder: Substring
+}
+
+private extension Substring {
+    func droppingLeadingLevelSeparator() -> Substring {
+        var remainder = self.trimmingPrefix(while: \.isWhitespace)
+
+        while let first = remainder.first, first == ":" || first == "-" || first == "|" {
+            remainder = remainder.dropFirst().trimmingPrefix(while: \.isWhitespace)
+        }
+
+        return remainder
     }
 }

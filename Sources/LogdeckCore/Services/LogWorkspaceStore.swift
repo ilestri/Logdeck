@@ -28,7 +28,7 @@ enum LogWorkspaceStoreError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case let .unsupportedVersion(version):
-            return "Unsupported workspace version \(version)."
+            return "지원하지 않는 작업공간 버전입니다. 버전: \(version)"
         }
     }
 }

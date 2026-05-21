@@ -11,15 +11,15 @@ struct LogCorrelationToken: Codable, Identifiable, Hashable, Sendable {
         var label: String {
             switch self {
             case .requestID:
-                return "Request"
+                return "요청"
             case .traceID:
-                return "Trace"
+                return "추적"
             case .correlationID:
-                return "Correlation"
+                return "상관"
             case .sessionID:
-                return "Session"
+                return "세션"
             case .transactionID:
-                return "Transaction"
+                return "트랜잭션"
             }
         }
     }

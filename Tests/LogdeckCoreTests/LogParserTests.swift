@@ -248,7 +248,7 @@ final class LogParserTests: XCTestCase {
         )
 
         XCTAssertEqual(entries.map(\.lineNumber), [1, 2, 3])
-        XCTAssertEqual(entries.map(\.message), ["INFO first", "", "ERROR third"])
+        XCTAssertEqual(entries.map(\.message), ["first", "", "third"])
         XCTAssertEqual(entries.map(\.level), [.info, .info, .error])
     }
 
@@ -260,8 +260,48 @@ final class LogParserTests: XCTestCase {
         )
 
         XCTAssertEqual(entries.map(\.lineNumber), [1, 2, 3])
-        XCTAssertEqual(entries.map(\.message), ["INFO first", "ERROR second", "WARN third"])
+        XCTAssertEqual(entries.map(\.message), ["first", "second", "third"])
         XCTAssertEqual(entries.map(\.level), [.info, .error, .warning])
+    }
+
+    func testDropsLeadingMetadataFieldsFromDisplayMessage() {
+        let entry = LogParser.parseLine(
+            "2026-05-20 10:11:12 INFO process=api subsystem=com.logdeck.ingest category=open request_id=abc-123 opened /Users/zibago/logs/app.log",
+            lineNumber: 1,
+            sourceID: UUID()
+        )
+
+        XCTAssertEqual(entry.level, .info)
+        XCTAssertEqual(entry.message, "opened /Users/zibago/logs/app.log")
+        XCTAssertEqual(
+            entry.rawText,
+            "2026-05-20 10:11:12 INFO process=api subsystem=com.logdeck.ingest category=open request_id=abc-123 opened /Users/zibago/logs/app.log"
+        )
+    }
+
+    func testPromotesLeadingMetadataFieldsToInspectorFields() {
+        let entry = LogParser.parseLine(
+            "2026-05-20 10:11:12 INFO process=api subsystem=com.logdeck.ingest category=open logger='ingest.worker' request_id=abc-123 opened /Users/zibago/logs/app.log",
+            lineNumber: 1,
+            sourceID: UUID()
+        )
+
+        XCTAssertEqual(entry.message, "opened /Users/zibago/logs/app.log")
+        XCTAssertEqual(entry.process, "api")
+        XCTAssertEqual(entry.subsystem, "com.logdeck.ingest")
+        XCTAssertEqual(entry.category, "open")
+        XCTAssertEqual(entry.sender, "ingest.worker")
+        XCTAssertTrue(entry.hasUnifiedMetadata)
+    }
+
+    func testKeepsAllMetadataLineWhenNoDisplayBodyRemains() {
+        let entry = LogParser.parseLine(
+            "INFO process=api subsystem=com.logdeck.ingest request_id=abc-123",
+            lineNumber: 1,
+            sourceID: UUID()
+        )
+
+        XCTAssertEqual(entry.message, "process=api subsystem=com.logdeck.ingest request_id=abc-123")
     }
 
     func testParsesPlainTimestampPrefix() {
@@ -274,6 +314,7 @@ final class LogParserTests: XCTestCase {
 
         XCTAssertEqual(entry.lineNumber, 7)
         XCTAssertEqual(entry.level, .error)
+        XCTAssertEqual(entry.message, "failed to open file")
         XCTAssertNotNil(entry.timestamp)
     }
 
@@ -286,6 +327,7 @@ final class LogParserTests: XCTestCase {
         )
 
         XCTAssertEqual(entry.level, .error)
+        XCTAssertEqual(entry.message, "failed to open file")
         XCTAssertNotNil(entry.timestamp)
     }
 
@@ -297,6 +339,7 @@ final class LogParserTests: XCTestCase {
         )
 
         XCTAssertEqual(entry.level, .info)
+        XCTAssertEqual(entry.message, "[0] [aisb-1] [SERVER-0000] Version information - JEUS 8.5.")
         XCTAssertNotNil(entry.timestamp)
     }
 
@@ -308,6 +351,7 @@ final class LogParserTests: XCTestCase {
         )
 
         XCTAssertEqual(entry.level, .debug)
+        XCTAssertEqual(entry.message, "[mapper] <==      Total: 1")
         XCTAssertNotNil(entry.timestamp)
     }
 
@@ -319,6 +363,7 @@ final class LogParserTests: XCTestCase {
         )
 
         XCTAssertEqual(entry.level, .error)
+        XCTAssertEqual(entry.message, "failed to open file")
         XCTAssertNotNil(entry.timestamp)
     }
 
@@ -334,6 +379,7 @@ final class LogParserTests: XCTestCase {
         let expected = try XCTUnwrap(formatter.date(from: "2026-05-19T13:10:20.123Z"))
         XCTAssertEqual(try XCTUnwrap(entry.timestamp).timeIntervalSince1970, expected.timeIntervalSince1970, accuracy: 0.001)
         XCTAssertEqual(entry.level, .error)
+        XCTAssertEqual(entry.message, "failed to open file")
     }
 
     func testParsesLongFractionalISOTimestampPrefixWithOffset() throws {
@@ -348,5 +394,6 @@ final class LogParserTests: XCTestCase {
         let expected = try XCTUnwrap(formatter.date(from: "2026-05-19T13:10:20.123456789+09:30"))
         XCTAssertEqual(try XCTUnwrap(entry.timestamp).timeIntervalSince1970, expected.timeIntervalSince1970, accuracy: 0.001)
         XCTAssertEqual(entry.level, .error)
+        XCTAssertEqual(entry.message, "failed to open file")
     }
 }

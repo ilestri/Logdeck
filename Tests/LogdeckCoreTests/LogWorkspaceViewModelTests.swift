@@ -16,11 +16,11 @@ final class LogWorkspaceViewModelTests: XCTestCase {
 
         viewModel.selectNextIssue()
         XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 2)
-        XCTAssertEqual(viewModel.issueStatusLabel, "1 / 2 issues")
+        XCTAssertEqual(viewModel.issueStatusLabel, "이슈 1 / 2")
 
         viewModel.selectNextIssue()
         XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 4)
-        XCTAssertEqual(viewModel.issueStatusLabel, "2 / 2 issues")
+        XCTAssertEqual(viewModel.issueStatusLabel, "이슈 2 / 2")
 
         viewModel.selectNextIssue()
         XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 2)
@@ -73,6 +73,36 @@ final class LogWorkspaceViewModelTests: XCTestCase {
 
         viewModel.selectPreviousIssue()
         XCTAssertEqual(viewModel.selectedEntry?.message, "first issue")
+    }
+
+    func testVisibleEntryNavigationWrapsThroughVisibleRows() {
+        let entries = makeEntries()
+        let viewModel = makeViewModel(entries: entries, selectedEntry: entries[0])
+
+        viewModel.selectNextVisibleEntry()
+        XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 2)
+
+        viewModel.selectPreviousVisibleEntry()
+        XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 1)
+
+        viewModel.selectPreviousVisibleEntry()
+        XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 5)
+
+        viewModel.selectNextVisibleEntry()
+        XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 1)
+    }
+
+    func testVisibleEntryNavigationRespectsCurrentFilters() {
+        let entries = makeEntries()
+        let viewModel = makeViewModel(entries: entries, selectedEntry: entries[0])
+
+        viewModel.enabledLevels = [.error, .fault]
+
+        viewModel.selectNextVisibleEntry()
+        XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 4)
+
+        viewModel.selectNextVisibleEntry()
+        XCTAssertEqual(viewModel.selectedEntry?.lineNumber, 2)
     }
 
     func testVisibleEntriesRebuildWhenLevelFilterChanges() {
@@ -144,6 +174,37 @@ final class LogWorkspaceViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.selectedSource?.id, source.id)
         XCTAssertEqual(viewModel.visibleEntries.map(\.message), ["current"])
+    }
+
+    func testRemoveSelectedSourceSelectsAdjacentSource() {
+        let firstSource = makeSource(path: "/tmp/api.log", messages: ["api"])
+        let secondSource = makeSource(path: "/tmp/worker.log", messages: ["worker"])
+        let viewModel = LogWorkspaceViewModel()
+
+        viewModel.sources = [firstSource, secondSource]
+        viewModel.selectedSourceID = firstSource.id
+
+        viewModel.removeSource(firstSource)
+
+        XCTAssertEqual(viewModel.sources.map(\.id), [secondSource.id])
+        XCTAssertEqual(viewModel.selectedSourceID, secondSource.id)
+        XCTAssertEqual(viewModel.visibleEntries.map(\.message), ["worker"])
+        XCTAssertEqual(viewModel.statusMessage, "api.log을(를) 소스에서 닫았습니다.")
+    }
+
+    func testRemoveLastSourceClearsWorkspaceSelection() {
+        let source = makeSource(path: "/tmp/only.log", messages: ["only"])
+        let viewModel = LogWorkspaceViewModel()
+
+        viewModel.sources = [source]
+        viewModel.selectedSourceID = source.id
+
+        viewModel.removeSource(source)
+
+        XCTAssertTrue(viewModel.sources.isEmpty)
+        XCTAssertNil(viewModel.selectedSourceID)
+        XCTAssertTrue(viewModel.visibleEntries.isEmpty)
+        XCTAssertNil(viewModel.selectedEntry)
     }
 
     func testTimelineModeMergesSourcesByTimestamp() {
@@ -252,7 +313,7 @@ final class LogWorkspaceViewModelTests: XCTestCase {
         )
         let viewModel = makeViewModel(entries: [entry], selectedEntry: entry)
 
-        XCTAssertEqual(viewModel.selectedEntryTokens.map(\.label), ["Request: REQ-7", "Trace: TRACE-9"])
+        XCTAssertEqual(viewModel.selectedEntryTokens.map(\.label), ["요청: REQ-7", "추적: TRACE-9"])
     }
 
     func testMetadataFiltersNarrowUnifiedLogEntriesAfterLevelFilter() {
@@ -332,6 +393,40 @@ final class LogWorkspaceViewModelTests: XCTestCase {
         viewModel.clearMetadataFilters()
 
         XCTAssertEqual(viewModel.metadataFilters, .empty)
+    }
+
+    func testReportsActiveFilterStateAndInvalidRegex() {
+        let entries = makeEntries()
+        let viewModel = makeViewModel(entries: entries, selectedEntry: entries[0])
+
+        XCTAssertFalse(viewModel.hasActiveFilters)
+        XCTAssertEqual(viewModel.filterSummary, "전체 5줄")
+
+        viewModel.query = #"/[/"#
+
+        XCTAssertTrue(viewModel.hasActiveFilters)
+        XCTAssertEqual(viewModel.queryWarning, "정규식이 올바르지 않습니다.")
+        XCTAssertEqual(viewModel.filterSummary, "0 / 5줄 표시 중")
+    }
+
+    func testClearAllFiltersResetsVisibleNarrowingState() {
+        let entries = makeEntries()
+        let viewModel = makeViewModel(entries: entries, selectedEntry: entries[0])
+
+        viewModel.query = "database"
+        viewModel.enabledLevels = [.error]
+        viewModel.metadataFilters = LogMetadataFilters(subsystem: "api")
+        viewModel.pin(LogCorrelationToken(kind: .requestID, value: "REQ-7"))
+
+        viewModel.clearAllFilters()
+
+        XCTAssertFalse(viewModel.hasActiveFilters)
+        XCTAssertEqual(viewModel.query, "")
+        XCTAssertEqual(viewModel.enabledLevels, Set(LogLevel.allCases))
+        XCTAssertEqual(viewModel.metadataFilters, .empty)
+        XCTAssertNil(viewModel.pinnedToken)
+        XCTAssertEqual(viewModel.statusMessage, "모든 필터를 지웠습니다.")
+        XCTAssertEqual(viewModel.visibleEntries.count, entries.count)
     }
 
     func testWorkspaceSnapshotCapturesSourcesAndFilters() {

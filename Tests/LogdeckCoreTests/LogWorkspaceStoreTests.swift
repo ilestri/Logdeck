@@ -113,7 +113,7 @@ final class LogWorkspaceStoreTests: XCTestCase {
         try LogWorkspaceStore.write(document, to: url)
 
         XCTAssertThrowsError(try LogWorkspaceStore.read(from: url)) { error in
-            XCTAssertEqual(error.localizedDescription, "Unsupported workspace version \(futureVersion).")
+            XCTAssertEqual(error.localizedDescription, "지원하지 않는 작업공간 버전입니다. 버전: \(futureVersion)")
         }
     }
 
